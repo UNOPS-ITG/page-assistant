@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PageAssistantProvider, usePageAssistant } from './components/PageAssistant';
 import { CHARACTERS, DEFAULT_CHARACTER_ID } from './components/PageAssistant/constants';
 import './App.css';
@@ -43,6 +43,7 @@ interface DemoContentProps {
 function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: DemoContentProps) {
   const assistant = usePageAssistant();
   const [state, setState] = useState(assistant.currentState);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
 
   const activeCharacter = CHARACTERS[characterId];
   const characterName = activeCharacter?.label ?? 'Assistant';
@@ -82,7 +83,7 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
           <a className="nav-link" href="#pricing">
             Pricing
           </a>
-          <a className="nav-link" href="#controls">
+          <a className="nav-link nav-link-desktop" href="#controls">
             Controls
           </a>
         </nav>
@@ -94,7 +95,10 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
           <div className="hero-inner">
             <p className="hero-eyebrow">Animated Page Assistant</p>
             <h1 id="hero-title" className="hero-title">
-              Meet {characterName}, Your Page Assistant
+              Meet <InlineCharacterPicker
+                characterId={characterId}
+                onChange={onCharacterChange}
+              />, Your Page Assistant
             </h1>
             <p className="hero-subtitle">
               An animated guide who walks your page, points at what matters, and reacts to your visitors — all in
@@ -219,37 +223,59 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
         </div>
       </footer>
 
-      <div className="control-panel" role="region" aria-label="Assistant controls">
+      {mobileActionsOpen && (
+        <div className="mobile-backdrop" onClick={() => setMobileActionsOpen(false)} />
+      )}
+
+      <div
+        className={`control-panel${mobileActionsOpen ? ' control-panel-expanded' : ''}`}
+        role="region"
+        aria-label="Assistant controls"
+      >
         <div className="control-panel-inner">
           <div className="control-panel-top">
             <p className="control-panel-label">Try the API</p>
             <div className="selector-group">
-              <select
-                className="selector-dropdown"
-                value={characterId}
-                onChange={(e) => onCharacterChange(e.target.value)}
-                aria-label="Character"
-              >
-                {CHARACTER_OPTIONS.map((ch) => (
-                  <option key={ch.id} value={ch.id}>
-                    {ch.label}
-                  </option>
-                ))}
-              </select>
-              <div className="selector" role="radiogroup" aria-label="Theme">
-                {THEMES.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={`selector-btn${t.id === theme ? ' selector-btn-active' : ''}`}
-                    onClick={() => onThemeChange(t.id)}
-                    aria-pressed={t.id === theme}
-                  >
-                    {t.label}
-                  </button>
-                ))}
+              <div className="selector-field">
+                <span className="selector-label">Select Character</span>
+                <select
+                  className="selector-dropdown"
+                  value={characterId}
+                  onChange={(e) => onCharacterChange(e.target.value)}
+                  aria-label="Character"
+                >
+                  {CHARACTER_OPTIONS.map((ch) => (
+                    <option key={ch.id} value={ch.id}>
+                      {ch.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="selector-field">
+                <span className="selector-label">Select Theme</span>
+                <div className="selector" role="radiogroup" aria-label="Theme">
+                  {THEMES.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`selector-btn${t.id === theme ? ' selector-btn-active' : ''}`}
+                      onClick={() => onThemeChange(t.id)}
+                      aria-pressed={t.id === theme}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
+            <button
+              type="button"
+              className={`mobile-actions-trigger${mobileActionsOpen ? ' mobile-actions-trigger-active' : ''}`}
+              onClick={() => setMobileActionsOpen(!mobileActionsOpen)}
+              aria-expanded={mobileActionsOpen}
+            >
+              {mobileActionsOpen ? 'Close' : 'Actions'}
+            </button>
           </div>
           <div className="control-buttons">
             <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.wave({ duration: 2000 }))}>
@@ -299,6 +325,70 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
         </div>
       </div>
     </div>
+  );
+}
+
+interface InlineCharacterPickerProps {
+  characterId: string;
+  onChange: (id: string) => void;
+}
+
+function InlineCharacterPicker({ characterId, onChange }: InlineCharacterPickerProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  const activeCharacter = CHARACTERS[characterId];
+  const characterName = activeCharacter?.label ?? 'Assistant';
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open]);
+
+  return (
+    <span className="hero-name-picker" ref={ref}>
+      <button
+        type="button"
+        className="hero-name-btn"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        {characterName}
+        <svg className="hero-name-chevron" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
+          <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <ul className="hero-name-dropdown" role="listbox" aria-label="Select character">
+          {CHARACTER_OPTIONS.map((ch) => (
+            <li key={ch.id} role="option" aria-selected={ch.id === characterId}>
+              <button
+                type="button"
+                className={`hero-name-option${ch.id === characterId ? ' hero-name-option-active' : ''}`}
+                onClick={() => { onChange(ch.id); setOpen(false); }}
+              >
+                {ch.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </span>
   );
 }
 

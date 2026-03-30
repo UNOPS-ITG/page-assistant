@@ -1,4 +1,4 @@
-import { Suspense, type CSSProperties, type MutableRefObject } from 'react';
+import { Suspense, useEffect, useState, type CSSProperties, type MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { CharacterModel } from './CharacterModel';
@@ -18,9 +18,12 @@ interface AssistantCanvasInternalProps {
   onCharacterHover?: (hovering: boolean) => void;
 }
 
-function CameraSetup() {
+const MOBILE_CAMERA_Z_SCALE = 1.35;
+
+function CameraSetup({ cameraZ }: { cameraZ: number }) {
   const { camera } = useThree();
   useFrame(() => {
+    camera.position.z = cameraZ;
     camera.lookAt(CAMERA_CONFIG.LOOK_AT[0], CAMERA_CONFIG.LOOK_AT[1], CAMERA_CONFIG.LOOK_AT[2]);
   });
   return null;
@@ -29,6 +32,7 @@ function CameraSetup() {
 function SceneContent({
   character,
   controllerRef,
+  cameraZ,
   onStateChange,
   onLoaded,
   onCharacterClick,
@@ -36,6 +40,7 @@ function SceneContent({
 }: {
   character: CharacterDefinition;
   controllerRef: MutableRefObject<AssistantController | null>;
+  cameraZ: number;
   onStateChange?: (state: AssistantState) => void;
   onLoaded?: () => void;
   onCharacterClick?: () => void;
@@ -43,7 +48,7 @@ function SceneContent({
 }) {
   return (
     <>
-      <CameraSetup />
+      <CameraSetup cameraZ={cameraZ} />
       <ambientLight intensity={1.0} />
       <hemisphereLight args={[0xffffff, 0x8c8c8c, 0.8]} />
       <Suspense fallback={null}>
@@ -73,6 +78,22 @@ export function AssistantCanvas({
   onCharacterClick,
   onCharacterHover,
 }: AssistantCanvasInternalProps) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches,
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const cameraZ = isMobile
+    ? CAMERA_CONFIG.POSITION[2] * MOBILE_CAMERA_Z_SCALE
+    : CAMERA_CONFIG.POSITION[2];
+
   const wrapperStyle: CSSProperties = containerMode
     ? {
         position: 'relative',
@@ -102,7 +123,7 @@ export function AssistantCanvas({
         dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1}
         camera={{
           fov: CAMERA_CONFIG.FOV,
-          position: [...CAMERA_CONFIG.POSITION] as [number, number, number],
+          position: [CAMERA_CONFIG.POSITION[0], CAMERA_CONFIG.POSITION[1], cameraZ] as [number, number, number],
           near: CAMERA_CONFIG.NEAR,
           far: CAMERA_CONFIG.FAR,
         }}
@@ -115,6 +136,7 @@ export function AssistantCanvas({
         <SceneContent
           character={character}
           controllerRef={controllerRef}
+          cameraZ={cameraZ}
           onStateChange={onStateChange}
           onLoaded={onLoaded}
           onCharacterClick={onCharacterClick}

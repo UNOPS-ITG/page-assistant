@@ -369,23 +369,75 @@ export function PageAssistantProvider({
       {!suppressCanvas && (
         <>
           {isVisible && !isLoaded && (
-            <div
-              style={{
-                position: 'fixed',
-                bottom: 16,
-                right: 16,
-                zIndex: 1001,
-                padding: '8px 12px',
-                borderRadius: 8,
-                background: 'rgba(0,0,0,0.65)',
-                color: '#fff',
-                fontSize: 13,
-                pointerEvents: 'none',
-              }}
-              aria-live="polite"
-            >
-              Loading assistant…
-            </div>
+            <>
+              <style>{`
+                @keyframes pa-loader-pulse {
+                  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.45); }
+                  50% { box-shadow: 0 0 0 10px rgba(99,102,241,0); }
+                }
+                @keyframes pa-loader-spin {
+                  to { transform: rotate(360deg); }
+                }
+                @keyframes pa-loader-slide-in {
+                  from { opacity: 0; transform: translateY(20px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes pa-loader-dot {
+                  0%, 80%, 100% { opacity: 0.25; }
+                  40% { opacity: 1; }
+                }
+              `}</style>
+              <div
+                style={{
+                  position: 'fixed',
+                  bottom: 24,
+                  right: 24,
+                  zIndex: 1001,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px 20px',
+                  borderRadius: 14,
+                  background: 'rgba(15,15,25,0.82)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  letterSpacing: '0.01em',
+                  pointerEvents: 'none',
+                  animation: 'pa-loader-pulse 2s ease-in-out infinite, pa-loader-slide-in 0.4s ease-out',
+                  border: '1px solid rgba(99,102,241,0.3)',
+                }}
+                aria-live="polite"
+              >
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    border: '2.5px solid rgba(255,255,255,0.2)',
+                    borderTopColor: '#818cf8',
+                    borderRadius: '50%',
+                    animation: 'pa-loader-spin 0.8s linear infinite',
+                    flexShrink: 0,
+                  }}
+                />
+                <span>
+                  Loading assistant
+                  {['0s', '0.15s', '0.3s'].map((delay, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        animation: 'pa-loader-dot 1.4s infinite',
+                        animationDelay: delay,
+                      }}
+                    >
+                      .
+                    </span>
+                  ))}
+                </span>
+              </div>
+            </>
           )}
           <div style={{ display: isVisible ? undefined : 'none' }}>
             <AssistantCanvas
