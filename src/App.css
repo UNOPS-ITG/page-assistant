@@ -1356,7 +1356,16 @@ main {
     color: var(--text-primary);
   }
 
-  .control-buttons {
+  .control-tabs {
+    display: none;
+  }
+
+  .control-panel-expanded .control-tabs {
+    display: flex;
+  }
+
+  .control-buttons,
+  .tour-panel {
     display: none;
   }
 
@@ -1364,6 +1373,16 @@ main {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0.4rem;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-top: 0.5rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .control-panel-expanded .tour-panel {
+    display: flex;
     max-height: 50vh;
     overflow-y: auto;
     padding-top: 0.5rem;
