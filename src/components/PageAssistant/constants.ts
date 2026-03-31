@@ -131,7 +131,7 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelScale: 1,
     lightingOverrides: {
       fillLightIntensity: 0.4,
-      directionalIntensity: 3.2,
+      directionalIntensity: 5.2,
       emissiveIntensity: 0,
     },
   },
