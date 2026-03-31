@@ -102,6 +102,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelPath: '/models/amy.glb',
     modelHeight: 1.47,
     modelScale: 1,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 2.2,
+      emissiveIntensity: 0,
+    },
   },
   sophie: {
     id: 'sophie',
@@ -111,6 +116,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelHeight: 1.47,
     modelScale: 1,
     maxArmIkAngle: Math.PI * 0.45,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 3.2,
+      emissiveIntensity: 0,
+    },
   },
   michelle: {
     id: 'michelle',
@@ -119,6 +129,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelPath: '/models/michelle.glb',
     modelHeight: 1.47,
     modelScale: 1,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 3.2,
+      emissiveIntensity: 0,
+    },
   },
   aj: {
     id: 'aj',
@@ -127,6 +142,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelPath: '/models/aj.glb',
     modelHeight: 1.47,
     modelScale: 1,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 3.2,
+      emissiveIntensity: 0,
+    },
   },
   boss: {
     id: 'boss',
@@ -136,6 +156,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelHeight: 1.47,
     modelScale: 1,
     maxArmIkAngle: Math.PI * 0.45,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 1.2,
+      emissiveIntensity: 0,
+    },
   },
   brian: {
     id: 'brian',
@@ -145,6 +170,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelHeight: 1.47,
     modelScale: 1,
     maxArmIkAngle: Math.PI * 0.55,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 1.2,
+      emissiveIntensity: 0,
+    },
   },
   doozy: {
     id: 'doozy',
@@ -153,6 +183,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelPath: '/models/doozy.glb',
     modelHeight: 1.47,
     modelScale: 1,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 1.2,
+      emissiveIntensity: 0,
+    },
   },
   joe: {
     id: 'joe',
@@ -162,6 +197,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelHeight: 1.47,
     modelScale: 1,
     maxArmIkAngle: Math.PI * 0.50,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 1.2,
+      emissiveIntensity: 0,
+    },
   },
   mousey: {
     id: 'mousey',
@@ -170,6 +210,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelPath: '/models/mousey.glb',
     modelHeight: 1.47,
     modelScale: 1,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 1.2,
+      emissiveIntensity: 0,
+    },
   },
 } as const;
 
