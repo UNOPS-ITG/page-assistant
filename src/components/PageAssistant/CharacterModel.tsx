@@ -181,6 +181,8 @@ export function CharacterModel({
   const loadedMeshes = useLoader(FBXLoader, loaderPaths);
   const baseModel = loadedMeshes[0];
 
+  const emissiveBoost = character.lightingOverrides?.emissiveIntensity ?? 0;
+
   useMemo(() => {
     baseModel.traverse((child) => {
       if ((child as THREE.Mesh).isMesh || (child as THREE.SkinnedMesh).isSkinnedMesh) {
@@ -189,14 +191,18 @@ export function CharacterModel({
         const mesh = child as THREE.Mesh;
         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         for (const mat of materials) {
-          if (!mat || !(mat as THREE.MeshPhongMaterial).map) continue;
+          if (!mat) continue;
           const phong = mat as THREE.MeshPhongMaterial;
           if (phong.map) phong.map.colorSpace = THREE.SRGBColorSpace;
           if (phong.emissiveMap) phong.emissiveMap.colorSpace = THREE.SRGBColorSpace;
+          if (emissiveBoost > 0) {
+            phong.emissive = new THREE.Color(0xffffff);
+            phong.emissiveIntensity = emissiveBoost;
+          }
         }
       }
     });
-  }, [baseModel]);
+  }, [baseModel, emissiveBoost]);
 
   const actualModelHeight = useMemo(() => {
     const box = new THREE.Box3().setFromObject(baseModel);
@@ -608,6 +614,14 @@ export function CharacterModel({
           onPointerOver={onPointerOver}
           onPointerOut={onPointerOut}
         />
+        {(character.lightingOverrides?.fillLightIntensity ?? 0) > 0 && (
+          <pointLight
+            position={[0, character.modelHeight / character.modelScale * 0.6, character.modelHeight / character.modelScale * 0.8]}
+            intensity={character.lightingOverrides!.fillLightIntensity!}
+            distance={character.modelHeight / character.modelScale * 3}
+            decay={1.5}
+          />
+        )}
         <BoneOverrideController
           boneRefs={boneRefsRef}
           lookTarget={lookTargetRef}
@@ -622,7 +636,7 @@ export function CharacterModel({
       <directionalLight
         ref={lightRef}
         position={[2, 3, 4]}
-        intensity={1.5}
+        intensity={character.lightingOverrides?.directionalIntensity ?? 1.5}
         castShadow
       />
       <mesh ref={shadowGroundRef} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>

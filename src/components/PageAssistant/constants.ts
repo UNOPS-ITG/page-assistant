@@ -72,6 +72,15 @@ export const ONE_SHOT_CLIPS = new Set([
 
 export type CharacterSex = 'male' | 'female';
 
+export interface CharacterLightingOverrides {
+  /** Extra point-light intensity added inside the character group as fill. */
+  fillLightIntensity?: number;
+  /** Override the per-character directional light intensity (default 1.5). */
+  directionalIntensity?: number;
+  /** Flat emissive boost applied to every material on the mesh (0-1 range). */
+  emissiveIntensity?: number;
+}
+
 export interface CharacterDefinition {
   id: string;
   label: string;
@@ -80,6 +89,7 @@ export interface CharacterDefinition {
   animations: Record<string, string>;
   modelHeight: number;
   modelScale: number;
+  lightingOverrides?: CharacterLightingOverrides;
 }
 
 function buildCharacterPaths(folder: string, prefix: string) {
@@ -104,6 +114,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     ...buildCharacterPaths('amy', 'amy'),
     modelHeight: 1.47,
     modelScale: 0.01,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 3.2,
+      emissiveIntensity: 0,
+    },
   },
   sophie: {
     id: 'sophie',
@@ -112,6 +127,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     ...buildCharacterPaths('sophie', 'sophie'),
     modelHeight: 1.47,
     modelScale: 0.01,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 3.2,
+      emissiveIntensity: 0,
+    },
   },
   michelle: {
     id: 'michelle',
@@ -120,6 +140,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     ...buildCharacterPaths('michelle', 'michelle'),
     modelHeight: 1.47,
     modelScale: 0.01,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 9.0,
+      emissiveIntensity: 0,
+    },
   },
   aj: {
     id: 'aj',
@@ -128,6 +153,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     ...buildCharacterPaths('aj', 'aj'),
     modelHeight: 1.47,
     modelScale: 0.01,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 5.2,
+      emissiveIntensity: 0,
+    },
   },
   boss: {
     id: 'boss',
@@ -144,6 +174,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     ...buildCharacterPaths('brian', 'brian'),
     modelHeight: 1.47,
     modelScale: 0.01,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 3.2,
+      emissiveIntensity: 0,
+    },
   },
   doozy: {
     id: 'doozy',
@@ -152,6 +187,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     ...buildCharacterPaths('doozy', 'doozy'),
     modelHeight: 1.47,
     modelScale: 0.01,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 3.2,
+      emissiveIntensity: 0,
+    },
   },
   joe: {
     id: 'joe',
@@ -160,6 +200,11 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     ...buildCharacterPaths('joe', 'joe'),
     modelHeight: 1.47,
     modelScale: 0.01,
+    lightingOverrides: {
+      fillLightIntensity: 0.4,
+      directionalIntensity: 3.2,
+      emissiveIntensity: 0,
+    },
   },
   mousey: {
     id: 'mousey',
