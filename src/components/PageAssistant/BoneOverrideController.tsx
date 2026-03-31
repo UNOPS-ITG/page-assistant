@@ -170,6 +170,42 @@ function enforceArmSide(
   armBone.quaternion.copy(_enfParentInv.multiply(_correctionRot));
 }
 
+const FINGER_CURL_ANGLE = Math.PI * 0.45;
+
+interface HandFingerBones {
+  index: THREE.Bone[];
+  curl: THREE.Bone[];
+}
+
+function collectFingerBones(forearmBone: THREE.Bone | null): HandFingerBones | null {
+  if (!forearmBone) return null;
+  const index: THREE.Bone[] = [];
+  const curl: THREE.Bone[] = [];
+  forearmBone.traverse((node) => {
+    if (!(node as THREE.Bone).isBone) return;
+    const n = node.name.toLowerCase();
+    if (n.includes('index')) index.push(node as THREE.Bone);
+    else if (n.includes('middle') || n.includes('ring') || n.includes('pinky'))
+      curl.push(node as THREE.Bone);
+  });
+  if (curl.length === 0) return null;
+  return { index, curl };
+}
+
+function applyPointingFingers(
+  fingers: HandFingerBones,
+  blend: number,
+) {
+  for (const bone of fingers.curl) {
+    bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, FINGER_CURL_ANGLE, blend);
+  }
+  for (const bone of fingers.index) {
+    bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, 0, blend);
+    bone.rotation.y = THREE.MathUtils.lerp(bone.rotation.y, 0, blend);
+    bone.rotation.z = THREE.MathUtils.lerp(bone.rotation.z, 0, blend);
+  }
+}
+
 const JAW_OPEN_ANGLE = 0.18;
 const JAW_SMOOTH_SPEED = 12;
 
@@ -188,6 +224,8 @@ export function BoneOverrideController({
   const rightBlendRef = useRef(0);
   const leftAimRef = useRef(new THREE.Quaternion());
   const rightAimRef = useRef(new THREE.Quaternion());
+  const leftFingersRef = useRef<HandFingerBones | null | undefined>(undefined);
+  const rightFingersRef = useRef<HandFingerBones | null | undefined>(undefined);
   const jawTimeRef = useRef(0);
   const jawTargetRef = useRef(0);
   const jawCurrentRef = useRef(0);
@@ -286,12 +324,22 @@ export function BoneOverrideController({
       bones.leftArm?.quaternion.slerp(leftAimRef.current, leftBlendRef.current);
       bones.leftForeArm?.quaternion.slerp(restData.leftForearmRestQuat, leftBlendRef.current);
       enforceArmSide(bones.leftArm, bones.leftForeArm, false, localPlusX_X, localPlusX_Z);
+
+      if (leftFingersRef.current === undefined)
+        leftFingersRef.current = collectFingerBones(bones.leftForeArm);
+      if (leftFingersRef.current)
+        applyPointingFingers(leftFingersRef.current, leftBlendRef.current);
     }
 
     if (rightBlendRef.current > 0.001 && restData) {
       bones.rightArm?.quaternion.slerp(rightAimRef.current, rightBlendRef.current);
       bones.rightForeArm?.quaternion.slerp(restData.rightForearmRestQuat, rightBlendRef.current);
       enforceArmSide(bones.rightArm, bones.rightForeArm, true, localPlusX_X, localPlusX_Z);
+
+      if (rightFingersRef.current === undefined)
+        rightFingersRef.current = collectFingerBones(bones.rightForeArm);
+      if (rightFingersRef.current)
+        applyPointingFingers(rightFingersRef.current, rightBlendRef.current);
     }
 
     // --- Jaw oscillation for speech ---
