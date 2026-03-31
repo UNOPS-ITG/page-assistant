@@ -66,6 +66,7 @@ const BONE_SUFFIX_MAP: Record<string, keyof BoneRefs> = {
   [canonicalBoneSuffix(BONE_NAMES.SPINE1)]: 'spine1',
   [canonicalBoneSuffix(BONE_NAMES.SPINE2)]: 'spine2',
   [canonicalBoneSuffix(BONE_NAMES.HIPS)]: 'hips',
+  [canonicalBoneSuffix(BONE_NAMES.JAW)]: 'jaw',
   [canonicalBoneSuffix(BONE_NAMES.LEFT_ARM)]: 'leftArm',
   [canonicalBoneSuffix(BONE_NAMES.LEFT_FOREARM)]: 'leftForeArm',
   [canonicalBoneSuffix(BONE_NAMES.RIGHT_ARM)]: 'rightArm',
@@ -80,6 +81,7 @@ function collectBoneRefs(root: THREE.Object3D): BoneRefs {
     spine1: null,
     spine2: null,
     hips: null,
+    jaw: null,
     leftArm: null,
     leftForeArm: null,
     rightArm: null,
@@ -133,6 +135,7 @@ function computeArmRestData(bones: BoneRefs): ArmRestData {
 interface CharacterModelProps {
   character: CharacterDefinition;
   controllerRef: MutableRefObject<AssistantController | null>;
+  isSpeaking?: boolean;
   onStateChange?: (state: AssistantState) => void;
   onLoaded?: () => void;
   onClick?: () => void;
@@ -143,6 +146,7 @@ interface CharacterModelProps {
 export function CharacterModel({
   character,
   controllerRef,
+  isSpeaking = false,
   onStateChange,
   onLoaded,
   onClick,
@@ -155,6 +159,8 @@ export function CharacterModel({
   const cursorRef = useCursorTracking();
 
   const lookTargetRef = useRef<LookTarget>({ mode: 'forward' });
+  const isSpeakingRef = useRef(isSpeaking);
+  isSpeakingRef.current = isSpeaking;
   const stateRef = useRef<AssistantState>('idle');
   const walkTargetRef = useRef<{ x: number; y: number } | null>(null);
   const walkResolveRef = useRef<(() => void) | null>(null);
@@ -610,6 +616,7 @@ export function CharacterModel({
           groupRef={groupRef}
           pointAtTarget={pointAtTargetRef}
           armRestData={armRestDataRef}
+          isSpeaking={isSpeakingRef}
         />
       </group>
       <directionalLight

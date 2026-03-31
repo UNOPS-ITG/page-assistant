@@ -877,6 +877,7 @@ export function PageAssistantProvider({
             <AssistantCanvas
               character={character}
               controllerRef={controllerRef}
+              isSpeaking={speech.status === 'speaking'}
               containerMode={containerMode}
               width={width}
               height={height}

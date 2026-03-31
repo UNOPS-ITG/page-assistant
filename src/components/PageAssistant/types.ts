@@ -169,6 +169,7 @@ export interface BoneRefs {
   spine1: Bone | null;
   spine2: Bone | null;
   hips: Bone | null;
+  jaw: Bone | null;
   leftArm: Bone | null;
   leftForeArm: Bone | null;
   rightArm: Bone | null;

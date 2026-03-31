@@ -12,6 +12,7 @@ interface BoneOverrideControllerProps {
   groupRef: React.RefObject<THREE.Group | null>;
   pointAtTarget: React.RefObject<PointAtTarget | null>;
   armRestData: React.RefObject<ArmRestData>;
+  isSpeaking: React.RefObject<boolean>;
 }
 
 const _eye = new THREE.Vector3();
@@ -169,6 +170,9 @@ function enforceArmSide(
   armBone.quaternion.copy(_enfParentInv.multiply(_correctionRot));
 }
 
+const JAW_OPEN_ANGLE = 0.18;
+const JAW_SMOOTH_SPEED = 12;
+
 export function BoneOverrideController({
   boneRefs,
   lookTarget,
@@ -177,12 +181,18 @@ export function BoneOverrideController({
   groupRef,
   pointAtTarget,
   armRestData,
+  isSpeaking,
 }: BoneOverrideControllerProps) {
   const { camera, gl } = useThree();
   const leftBlendRef = useRef(0);
   const rightBlendRef = useRef(0);
   const leftAimRef = useRef(new THREE.Quaternion());
   const rightAimRef = useRef(new THREE.Quaternion());
+  const jawTimeRef = useRef(0);
+  const jawTargetRef = useRef(0);
+  const jawCurrentRef = useRef(0);
+  const jawPhaseRef = useRef(0);
+  const jawNextFlipRef = useRef(0);
 
   useFrame((_, delta) => {
     const bones = boneRefs.current;
@@ -282,6 +292,36 @@ export function BoneOverrideController({
       bones.rightArm?.quaternion.slerp(rightAimRef.current, rightBlendRef.current);
       bones.rightForeArm?.quaternion.slerp(restData.rightForearmRestQuat, rightBlendRef.current);
       enforceArmSide(bones.rightArm, bones.rightForeArm, true, localPlusX_X, localPlusX_Z);
+    }
+
+    // --- Jaw oscillation for speech ---
+    if (bones.jaw) {
+      jawTimeRef.current += delta;
+
+      if (isSpeaking.current) {
+        if (jawTimeRef.current >= jawNextFlipRef.current) {
+          jawPhaseRef.current = jawPhaseRef.current > 0.3 ? 0 : 1;
+          const hold = jawPhaseRef.current > 0.3
+            ? 0.06 + Math.random() * 0.12
+            : 0.03 + Math.random() * 0.06;
+          jawNextFlipRef.current = jawTimeRef.current + hold;
+        }
+        const openAmount = jawPhaseRef.current > 0.3
+          ? (0.6 + Math.random() * 0.4)
+          : 0;
+        jawTargetRef.current = openAmount * JAW_OPEN_ANGLE;
+      } else {
+        jawTargetRef.current = 0;
+      }
+
+      jawCurrentRef.current += (jawTargetRef.current - jawCurrentRef.current)
+        * (1 - Math.exp(-JAW_SMOOTH_SPEED * delta));
+
+      if (Math.abs(jawCurrentRef.current) > 0.001) {
+        bones.jaw.rotation.x = jawCurrentRef.current;
+      } else if (!isSpeaking.current) {
+        bones.jaw.rotation.x = 0;
+      }
     }
   });
 

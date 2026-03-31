@@ -97,6 +97,14 @@ function buildDefaultTourJson(name: string): string {
         },
         duration: 2000,
       },
+      {
+        action: 'dance',
+        popover: {
+          title: 'Dance',
+          description: 'Dance like a pro and show your skills!',
+        },
+        duration: 4000,
+      },
     ],
   };
   return JSON.stringify(config, null, 2);

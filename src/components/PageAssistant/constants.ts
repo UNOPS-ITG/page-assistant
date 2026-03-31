@@ -5,6 +5,7 @@ export const BONE_NAMES = {
   SPINE1: 'mixamorigSpine1',
   SPINE2: 'mixamorigSpine2',
   HIPS: 'mixamorigHips',
+  JAW: 'mixamorigJaw',
   LEFT_ARM: 'mixamorigLeftArm',
   LEFT_FOREARM: 'mixamorigLeftForeArm',
   RIGHT_ARM: 'mixamorigRightArm',
@@ -54,6 +55,7 @@ export const BONES_TO_EXCLUDE_FROM_CLIPS = [
   BONE_NAMES.HEAD,
   BONE_NAMES.NECK,
   BONE_NAMES.SPINE,
+  BONE_NAMES.JAW,
 ];
 
 export const LOOPING_CLIPS = new Set([

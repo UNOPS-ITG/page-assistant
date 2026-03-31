@@ -8,6 +8,7 @@ import { CAMERA_CONFIG, type CharacterDefinition } from './constants';
 interface AssistantCanvasInternalProps {
   character: CharacterDefinition;
   controllerRef: MutableRefObject<AssistantController | null>;
+  isSpeaking?: boolean;
   containerMode?: boolean;
   width?: string | number;
   height?: string | number;
@@ -33,6 +34,7 @@ function SceneContent({
   character,
   controllerRef,
   cameraZ,
+  isSpeaking,
   onStateChange,
   onLoaded,
   onCharacterClick,
@@ -41,6 +43,7 @@ function SceneContent({
   character: CharacterDefinition;
   controllerRef: MutableRefObject<AssistantController | null>;
   cameraZ: number;
+  isSpeaking?: boolean;
   onStateChange?: (state: AssistantState) => void;
   onLoaded?: () => void;
   onCharacterClick?: () => void;
@@ -55,6 +58,7 @@ function SceneContent({
         <CharacterModel
           character={character}
           controllerRef={controllerRef}
+          isSpeaking={isSpeaking}
           onStateChange={onStateChange}
           onLoaded={onLoaded}
           onClick={onCharacterClick}
@@ -69,6 +73,7 @@ function SceneContent({
 export function AssistantCanvas({
   character,
   controllerRef,
+  isSpeaking,
   containerMode = false,
   width,
   height,
@@ -137,6 +142,7 @@ export function AssistantCanvas({
           character={character}
           controllerRef={controllerRef}
           cameraZ={cameraZ}
+          isSpeaking={isSpeaking}
           onStateChange={onStateChange}
           onLoaded={onLoaded}
           onCharacterClick={onCharacterClick}
