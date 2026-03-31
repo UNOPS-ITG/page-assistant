@@ -20,7 +20,7 @@ export const ROTATION_LIMITS = {
   ARM_BLEND_SPEED: 8,
   MAX_POINT_AT_TURN: Math.PI / 2,
   MIN_POINT_AT_TURN: Math.PI / 12,
-  MAX_ARM_IK_ANGLE: Math.PI * 0.55,
+  MAX_ARM_IK_ANGLE: Math.PI * 0.75,
 } as const;
 
 export const ANIMATION_CONFIG = {
@@ -85,25 +85,13 @@ export interface CharacterDefinition {
   id: string;
   label: string;
   sex: CharacterSex;
-  basePath: string;
-  animations: Record<string, string>;
+  /** Path to the merged GLB file containing the mesh and all animation clips. */
+  modelPath: string;
   modelHeight: number;
   modelScale: number;
+  /** Max angle (radians) the arm IK can rotate from the idle rest pose. Defaults to ROTATION_LIMITS.MAX_ARM_IK_ANGLE. */
+  maxArmIkAngle?: number;
   lightingOverrides?: CharacterLightingOverrides;
-}
-
-function buildCharacterPaths(folder: string, prefix: string) {
-  return {
-    basePath: `/mixamo_files/${folder}/${prefix}-tpose.fbx`,
-    animations: {
-      [CLIP_NAMES.IDLE]: `/mixamo_files/${folder}/${prefix}-idle.fbx`,
-      [CLIP_NAMES.WALK]: `/mixamo_files/${folder}/${prefix}-walk.fbx`,
-      [CLIP_NAMES.POINT]: `/mixamo_files/${folder}/${prefix}-point.fbx`,
-      [CLIP_NAMES.WAVE]: `/mixamo_files/${folder}/${prefix}-wave.fbx`,
-      [CLIP_NAMES.TALK]: `/mixamo_files/${folder}/${prefix}-talk.fbx`,
-      [CLIP_NAMES.DANCE]: `/mixamo_files/${folder}/${prefix}-hiphop.fbx`,
-    },
-  };
 }
 
 export const CHARACTERS: Record<string, CharacterDefinition> = {
@@ -111,108 +99,77 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     id: 'amy',
     label: 'Amy',
     sex: 'female',
-    ...buildCharacterPaths('amy', 'amy'),
+    modelPath: '/models/amy.glb',
     modelHeight: 1.47,
-    modelScale: 0.01,
-    lightingOverrides: {
-      fillLightIntensity: 0.4,
-      directionalIntensity: 3.2,
-      emissiveIntensity: 0,
-    },
+    modelScale: 1,
   },
   sophie: {
     id: 'sophie',
     label: 'Sophie',
     sex: 'female',
-    ...buildCharacterPaths('sophie', 'sophie'),
+    modelPath: '/models/sophie.glb',
     modelHeight: 1.47,
-    modelScale: 0.01,
-    lightingOverrides: {
-      fillLightIntensity: 0.4,
-      directionalIntensity: 3.2,
-      emissiveIntensity: 0,
-    },
+    modelScale: 1,
+    maxArmIkAngle: Math.PI * 0.45,
   },
   michelle: {
     id: 'michelle',
     label: 'Michelle',
     sex: 'female',
-    ...buildCharacterPaths('michelle', 'michelle'),
+    modelPath: '/models/michelle.glb',
     modelHeight: 1.47,
-    modelScale: 0.01,
-    lightingOverrides: {
-      fillLightIntensity: 0.4,
-      directionalIntensity: 9.0,
-      emissiveIntensity: 0,
-    },
+    modelScale: 1,
   },
   aj: {
     id: 'aj',
     label: 'AJ',
     sex: 'male',
-    ...buildCharacterPaths('aj', 'aj'),
+    modelPath: '/models/aj.glb',
     modelHeight: 1.47,
-    modelScale: 0.01,
-    lightingOverrides: {
-      fillLightIntensity: 0.4,
-      directionalIntensity: 5.2,
-      emissiveIntensity: 0,
-    },
+    modelScale: 1,
   },
   boss: {
     id: 'boss',
     label: 'Boss',
     sex: 'male',
-    ...buildCharacterPaths('boss', 'boss'),
+    modelPath: '/models/boss.glb',
     modelHeight: 1.47,
-    modelScale: 0.01,
+    modelScale: 1,
+    maxArmIkAngle: Math.PI * 0.45,
   },
   brian: {
     id: 'brian',
     label: 'Brian',
     sex: 'male',
-    ...buildCharacterPaths('brian', 'brian'),
+    modelPath: '/models/brian.glb',
     modelHeight: 1.47,
-    modelScale: 0.01,
-    lightingOverrides: {
-      fillLightIntensity: 0.4,
-      directionalIntensity: 3.2,
-      emissiveIntensity: 0,
-    },
+    modelScale: 1,
+    maxArmIkAngle: Math.PI * 0.55,
   },
   doozy: {
     id: 'doozy',
     label: 'Doozy',
     sex: 'female',
-    ...buildCharacterPaths('doozy', 'doozy'),
+    modelPath: '/models/doozy.glb',
     modelHeight: 1.47,
-    modelScale: 0.01,
-    lightingOverrides: {
-      fillLightIntensity: 0.4,
-      directionalIntensity: 3.2,
-      emissiveIntensity: 0,
-    },
+    modelScale: 1,
   },
   joe: {
     id: 'joe',
     label: 'Joe',
     sex: 'male',
-    ...buildCharacterPaths('joe', 'joe'),
+    modelPath: '/models/joe.glb',
     modelHeight: 1.47,
-    modelScale: 0.01,
-    lightingOverrides: {
-      fillLightIntensity: 0.4,
-      directionalIntensity: 3.2,
-      emissiveIntensity: 0,
-    },
+    modelScale: 1,
+    maxArmIkAngle: Math.PI * 0.50,
   },
   mousey: {
     id: 'mousey',
     label: 'Mousey',
     sex: 'female',
-    ...buildCharacterPaths('mousey', 'mousey'),
+    modelPath: '/models/mousey.glb',
     modelHeight: 1.47,
-    modelScale: 0.01,
+    modelScale: 1,
   },
 } as const;
 

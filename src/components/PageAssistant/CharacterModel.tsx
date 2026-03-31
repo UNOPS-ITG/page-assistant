@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { MutableRefObject } from 'react';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'meshoptimizer';
 import * as THREE from 'three';
 import type { AnimationClip, Bone, Group } from 'three';
 import {
@@ -10,21 +11,13 @@ import {
   BONES_TO_EXCLUDE_FROM_CLIPS,
   CLIP_NAMES,
   ONE_SHOT_CLIPS,
+  ROTATION_LIMITS,
   type CharacterDefinition,
 } from './constants';
 import type { ArmRestData, AssistantController, AssistantState, BoneRefs, LookTarget, PointAtTarget } from './types';
 import { useCursorTracking } from './useCursorTracking';
 import { useScreenToWorld } from './useScreenToWorld';
 import { BoneOverrideController } from './BoneOverrideController';
-
-const ANIM_LOAD_ORDER = [
-  CLIP_NAMES.IDLE,
-  CLIP_NAMES.WALK,
-  CLIP_NAMES.POINT,
-  CLIP_NAMES.WAVE,
-  CLIP_NAMES.TALK,
-  CLIP_NAMES.DANCE,
-] as const;
 
 function lerpAngle(from: number, to: number, t: number): number {
   let diff = to - from;
@@ -42,14 +35,6 @@ const MIXAMORIG_PREFIX = /^mixamorig\d*[:]?/;
 
 function canonicalBoneSuffix(name: string): string {
   return name.replace(MIXAMORIG_PREFIX, '');
-}
-
-function findAnimationClip(fbx: Group): AnimationClip | null {
-  if (fbx.animations.length === 0) return null;
-  if (fbx.animations.length === 1) return fbx.animations[0];
-  return fbx.animations.reduce((best, clip) =>
-    clip.tracks.length > best.tracks.length ? clip : best,
-  );
 }
 
 function stripBoneTracks(clip: AnimationClip, boneNames: readonly string[]) {
@@ -173,13 +158,11 @@ export function CharacterModel({
   const shadowGroundRef = useRef<THREE.Mesh>(null);
   const walkFacingRef = useRef(0);
 
-  const loaderPaths = useMemo(
-    () => [character.basePath, ...ANIM_LOAD_ORDER.map((k) => character.animations[k])],
-    [character],
-  );
-
-  const loadedMeshes = useLoader(FBXLoader, loaderPaths);
-  const baseModel = loadedMeshes[0];
+  const gltf = useLoader(GLTFLoader, character.modelPath, (loader) => {
+    loader.setMeshoptDecoder(MeshoptDecoder);
+  });
+  const baseModel = gltf.scene;
+  const animations = gltf.animations;
 
   const emissiveBoost = character.lightingOverrides?.emissiveIntensity ?? 0;
 
@@ -192,12 +175,15 @@ export function CharacterModel({
         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         for (const mat of materials) {
           if (!mat) continue;
-          const phong = mat as THREE.MeshPhongMaterial;
-          if (phong.map) phong.map.colorSpace = THREE.SRGBColorSpace;
-          if (phong.emissiveMap) phong.emissiveMap.colorSpace = THREE.SRGBColorSpace;
+          const std = mat as THREE.MeshStandardMaterial;
+          std.metalness = 0;
+          std.roughness = 1;
+          std.metalnessMap = null;
+          std.roughnessMap = null;
+          std.needsUpdate = true;
           if (emissiveBoost > 0) {
-            phong.emissive = new THREE.Color(0xffffff);
-            phong.emissiveIntensity = emissiveBoost;
+            std.emissive = new THREE.Color(0xffffff);
+            std.emissiveIntensity = emissiveBoost;
           }
         }
       }
@@ -218,15 +204,11 @@ export function CharacterModel({
     const mixerInstance = new THREE.AnimationMixer(baseModel);
     const actions: Record<string, THREE.AnimationAction> = {};
 
-    for (let i = 0; i < ANIM_LOAD_ORDER.length; i++) {
-      const clipName = ANIM_LOAD_ORDER[i];
-      const animFbx = loadedMeshes[i + 1];
-      const rawClip = findAnimationClip(animFbx);
-      if (!rawClip) continue;
+    for (const rawClip of animations) {
+      const clipName = rawClip.name;
+      if (!clipName) continue;
 
       const clip = rawClip.clone();
-      clip.name = clipName;
-
       stripBoneTracks(clip, BONES_TO_EXCLUDE_FROM_CLIPS);
 
       const action = mixerInstance.clipAction(clip);
@@ -239,14 +221,19 @@ export function CharacterModel({
 
     const bones = collectBoneRefs(baseModel);
 
-    baseModel.updateMatrixWorld(true);
-    const armRest = computeArmRestData(bones);
-
+    // Start idle and advance one frame so arm bones are in their idle-pose
+    // positions before we snapshot the rest data. Without this, rest data
+    // comes from the GLB bind/T-pose (arms out horizontal), which breaks the
+    // IK rotation math and causes arms to stay raised after pointing ends.
     const idleAction = actions[CLIP_NAMES.IDLE];
     if (idleAction) {
       idleAction.reset();
       idleAction.play();
+      mixerInstance.update(1 / 60);
     }
+
+    baseModel.updateMatrixWorld(true);
+    const armRest = computeArmRestData(bones);
 
     return {
       mixer: mixerInstance,
@@ -254,7 +241,7 @@ export function CharacterModel({
       boneRefs: bones,
       armRestData: armRest,
     };
-  }, [baseModel, loadedMeshes]);
+  }, [baseModel, animations]);
 
   const mixerRef = useRef(mixer);
   mixerRef.current = mixer;
@@ -631,6 +618,7 @@ export function CharacterModel({
           pointAtTarget={pointAtTargetRef}
           armRestData={armRestDataRef}
           isSpeaking={isSpeakingRef}
+          maxArmIkAngle={character.maxArmIkAngle ?? ROTATION_LIMITS.MAX_ARM_IK_ANGLE}
         />
       </group>
       <directionalLight

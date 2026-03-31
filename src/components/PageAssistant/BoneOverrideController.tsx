@@ -13,6 +13,7 @@ interface BoneOverrideControllerProps {
   pointAtTarget: React.RefObject<PointAtTarget | null>;
   armRestData: React.RefObject<ArmRestData>;
   isSpeaking: React.RefObject<boolean>;
+  maxArmIkAngle: number;
 }
 
 const _eye = new THREE.Vector3();
@@ -46,6 +47,7 @@ function computeArmIK(
   outAimQuat: THREE.Quaternion,
   isRightArm: boolean,
   bodyRotationY: number,
+  maxIkAngle: number,
 ): boolean {
   if (!armBone?.parent || !forearmBone) return false;
 
@@ -86,11 +88,11 @@ function computeArmIK(
     }
 
     const ikAngle = _currentDir.angleTo(_desiredDir);
-    if (ikAngle > ROTATION_LIMITS.MAX_ARM_IK_ANGLE) {
+    if (ikAngle > maxIkAngle) {
       _clampAxis.crossVectors(_currentDir, _desiredDir);
       if (_clampAxis.lengthSq() > 0.0001) {
         _clampAxis.normalize();
-        _desiredDir.copy(_currentDir).applyAxisAngle(_clampAxis, ROTATION_LIMITS.MAX_ARM_IK_ANGLE);
+        _desiredDir.copy(_currentDir).applyAxisAngle(_clampAxis, maxIkAngle);
       }
     }
 
@@ -171,25 +173,33 @@ function enforceArmSide(
 }
 
 const FINGER_CURL_ANGLE = Math.PI * 0.45;
+const ENFORCE_ARM_SIDE_THRESHOLD = 0.15;
+const ARM_OVERRIDE_CUTOFF = 0.03;
 
 interface HandFingerBones {
   index: THREE.Bone[];
   curl: THREE.Bone[];
+  restRotations: Map<THREE.Bone, THREE.Euler>;
 }
 
 function collectFingerBones(forearmBone: THREE.Bone | null): HandFingerBones | null {
   if (!forearmBone) return null;
   const index: THREE.Bone[] = [];
   const curl: THREE.Bone[] = [];
+  const restRotations = new Map<THREE.Bone, THREE.Euler>();
   forearmBone.traverse((node) => {
     if (!(node as THREE.Bone).isBone) return;
     const n = node.name.toLowerCase();
-    if (n.includes('index')) index.push(node as THREE.Bone);
-    else if (n.includes('middle') || n.includes('ring') || n.includes('pinky'))
+    if (n.includes('index')) {
+      index.push(node as THREE.Bone);
+      restRotations.set(node as THREE.Bone, (node as THREE.Bone).rotation.clone());
+    } else if (n.includes('middle') || n.includes('ring') || n.includes('pinky')) {
       curl.push(node as THREE.Bone);
+      restRotations.set(node as THREE.Bone, (node as THREE.Bone).rotation.clone());
+    }
   });
   if (curl.length === 0) return null;
-  return { index, curl };
+  return { index, curl, restRotations };
 }
 
 function applyPointingFingers(
@@ -206,6 +216,13 @@ function applyPointingFingers(
   }
 }
 
+function resetFingerBones(fingers: HandFingerBones) {
+  for (const bone of [...fingers.curl, ...fingers.index]) {
+    const rest = fingers.restRotations.get(bone);
+    if (rest) bone.rotation.copy(rest);
+  }
+}
+
 const JAW_OPEN_ANGLE = 0.18;
 const JAW_SMOOTH_SPEED = 12;
 
@@ -218,6 +235,7 @@ export function BoneOverrideController({
   pointAtTarget,
   armRestData,
   isSpeaking,
+  maxArmIkAngle,
 }: BoneOverrideControllerProps) {
   const { camera, gl } = useThree();
   const leftBlendRef = useRef(0);
@@ -226,6 +244,8 @@ export function BoneOverrideController({
   const rightAimRef = useRef(new THREE.Quaternion());
   const leftFingersRef = useRef<HandFingerBones | null | undefined>(undefined);
   const rightFingersRef = useRef<HandFingerBones | null | undefined>(undefined);
+  const leftWasOverridingRef = useRef(false);
+  const rightWasOverridingRef = useRef(false);
   const jawTimeRef = useRef(0);
   const jawTargetRef = useRef(0);
   const jawCurrentRef = useRef(0);
@@ -297,6 +317,9 @@ export function BoneOverrideController({
     rightBlendRef.current += ((wantRight ? 1 : 0) - rightBlendRef.current)
       * (1 - Math.exp(-(wantRight ? inSpeed : outSpeed) * delta));
 
+    if (!wantLeft && leftBlendRef.current < ARM_OVERRIDE_CUTOFF) leftBlendRef.current = 0;
+    if (!wantRight && rightBlendRef.current < ARM_OVERRIDE_CUTOFF) rightBlendRef.current = 0;
+
     leftBlendRef.current = THREE.MathUtils.clamp(leftBlendRef.current, 0, 1);
     rightBlendRef.current = THREE.MathUtils.clamp(rightBlendRef.current, 0, 1);
 
@@ -309,38 +332,59 @@ export function BoneOverrideController({
         computeArmIK(
           bones.leftArm, bones.leftForeArm,
           restData.leftArmRestQuat, restData.leftForearmRestQuat,
-          pointAt, leftAimRef.current, false, bodyRotY,
+          pointAt, leftAimRef.current, false, bodyRotY, maxArmIkAngle,
         );
       } else {
         computeArmIK(
           bones.rightArm, bones.rightForeArm,
           restData.rightArmRestQuat, restData.rightForearmRestQuat,
-          pointAt, rightAimRef.current, true, bodyRotY,
+          pointAt, rightAimRef.current, true, bodyRotY, maxArmIkAngle,
         );
       }
     }
 
-    if (leftBlendRef.current > 0.001 && restData) {
+    const leftOverriding = leftBlendRef.current > 0;
+    if (leftOverriding && restData) {
       bones.leftArm?.quaternion.slerp(leftAimRef.current, leftBlendRef.current);
       bones.leftForeArm?.quaternion.slerp(restData.leftForearmRestQuat, leftBlendRef.current);
-      enforceArmSide(bones.leftArm, bones.leftForeArm, false, localPlusX_X, localPlusX_Z);
+      if (leftBlendRef.current > ENFORCE_ARM_SIDE_THRESHOLD)
+        enforceArmSide(bones.leftArm, bones.leftForeArm, false, localPlusX_X, localPlusX_Z);
 
       if (leftFingersRef.current === undefined)
         leftFingersRef.current = collectFingerBones(bones.leftForeArm);
       if (leftFingersRef.current)
         applyPointingFingers(leftFingersRef.current, leftBlendRef.current);
+    } else if (leftWasOverridingRef.current) {
+      if (leftFingersRef.current) resetFingerBones(leftFingersRef.current);
+      // Explicitly restore the arm to rest. This is required when the Idle
+      // animation clip has no arm tracks (e.g. after FBX→GLB conversion with
+      // mismatched bone names), otherwise the bone freezes in pointing pose.
+      if (restData) {
+        if (bones.leftArm) bones.leftArm.quaternion.copy(restData.leftArmRestQuat);
+        if (bones.leftForeArm) bones.leftForeArm.quaternion.copy(restData.leftForearmRestQuat);
+      }
     }
+    leftWasOverridingRef.current = leftOverriding;
 
-    if (rightBlendRef.current > 0.001 && restData) {
+    const rightOverriding = rightBlendRef.current > 0;
+    if (rightOverriding && restData) {
       bones.rightArm?.quaternion.slerp(rightAimRef.current, rightBlendRef.current);
       bones.rightForeArm?.quaternion.slerp(restData.rightForearmRestQuat, rightBlendRef.current);
-      enforceArmSide(bones.rightArm, bones.rightForeArm, true, localPlusX_X, localPlusX_Z);
+      if (rightBlendRef.current > ENFORCE_ARM_SIDE_THRESHOLD)
+        enforceArmSide(bones.rightArm, bones.rightForeArm, true, localPlusX_X, localPlusX_Z);
 
       if (rightFingersRef.current === undefined)
         rightFingersRef.current = collectFingerBones(bones.rightForeArm);
       if (rightFingersRef.current)
         applyPointingFingers(rightFingersRef.current, rightBlendRef.current);
+    } else if (rightWasOverridingRef.current) {
+      if (rightFingersRef.current) resetFingerBones(rightFingersRef.current);
+      if (restData) {
+        if (bones.rightArm) bones.rightArm.quaternion.copy(restData.rightArmRestQuat);
+        if (bones.rightForeArm) bones.rightForeArm.quaternion.copy(restData.rightForearmRestQuat);
+      }
     }
+    rightWasOverridingRef.current = rightOverriding;
 
     // --- Jaw oscillation for speech ---
     if (bones.jaw) {

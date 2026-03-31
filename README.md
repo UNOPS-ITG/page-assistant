@@ -21,7 +21,7 @@ Built with **React**, **Three.js**, and **React Three Fiber**.
 - **Head tracking** — the character follows the user's cursor with head, neck, and spine bone overrides
 - **Cursor follow with arms** — optional arm IK that reaches toward the pointer in addition to head tracking
 - **Look at elements** — direct the character's gaze toward a specific element
-- **9 characters** — Amy, Sophie, Michelle, AJ, Boss, Brian, Doozy, Joe, and Mousey (Mixamo FBX rigs)
+- **9 characters** — Amy, Sophie, Michelle, AJ, Boss, Brian, Doozy, Joe, and Mousey (Mixamo rigs, optimized GLB)
 - **3 themes** — Midnight (dark), Light, and Grey, controlled via CSS custom properties
 - **Container mode** — embed the assistant in a sized container instead of the default full-viewport overlay
 - **Full API** — a React hook (`usePageAssistant`) exposes walk, gesture, look, speech, tour, visibility, and event methods
@@ -71,20 +71,93 @@ npm install
 
 ### 3D Assets
 
-Character models are **Mixamo FBX files** and must be placed under `public/mixamo_files/`. Each character folder needs a T-pose and six animation files:
+Character models start as **Mixamo FBX files** and are converted to optimized **GLB** files for runtime use. The conversion merges 7 FBX files per character into a single compressed GLB (typically 99%+ size reduction).
+
+#### Step 1 — Download from Mixamo
+
+Go to [mixamo.com](https://www.mixamo.com) (requires an Adobe account). For each character, download **7 FBX files** — one base mesh and six animations.
+
+**Base mesh (T-Pose):**
+
+1. Search for and select the character (e.g. "Amy").
+2. Download with: Format **FBX Binary (.fbx)**, Pose **T-Pose**, **With Skin**.
+
+**Animations (6 clips):**
+
+For each animation below, search Mixamo, preview it on your character, then download with: Format **FBX Binary (.fbx)**, **Without Skin**.
+
+| File name | Mixamo search term | Notes |
+|-----------|-------------------|-------|
+| `<char>-idle.fbx` | "Breathing Idle" or "Happy Idle" | Looping. Subtle breathing/weight shift. |
+| `<char>-walk.fbx` | "Walking" | Looping. **"In Place" must be checked.** |
+| `<char>-point.fbx` | "Pointing" or "Pointing Gesture" | One-shot. Arm extended forward. |
+| `<char>-wave.fbx` | "Waving" | One-shot. Greeting gesture. |
+| `<char>-talk.fbx` | "Talking" or "Explaining Gesture" | Looping. Hands move as if explaining. |
+| `<char>-hiphop.fbx` | "Hip Hop Dancing" | Looping. Fun/easter-egg dance. |
+
+**Download tips:**
+
+- Always select your character first so the preview confirms the animation works with their rig.
+- For the Walk clip, ensure **"In Place"** is checked — the character's legs animate but the root stays stationary (translation is controlled in code).
+- Adjust the **Arm Space** slider if arms clip through the body on any animation.
+- Use 60 FPS (Mixamo default). Do not reduce to 30.
+
+**Rename** downloaded files to match the naming convention and place them under `public/mixamo_files/<character>/`:
 
 ```
 public/mixamo_files/<character>/
-  ├── <character>-tpose.fbx
-  ├── <character>-idle.fbx
-  ├── <character>-walk.fbx
-  ├── <character>-point.fbx
-  ├── <character>-wave.fbx
-  ├── <character>-talk.fbx
-  └── <character>-hiphop.fbx
+  ├── <character>-tpose.fbx      ← With Skin
+  ├── <character>-idle.fbx       ← Without Skin
+  ├── <character>-walk.fbx       ← Without Skin, In Place
+  ├── <character>-point.fbx      ← Without Skin
+  ├── <character>-wave.fbx       ← Without Skin
+  ├── <character>-talk.fbx       ← Without Skin
+  └── <character>-hiphop.fbx     ← Without Skin
 ```
 
 Characters: `amy`, `sophie`, `michelle`, `aj`, `boss`, `brian`, `doozy`, `joe`, `mousey`.
+
+#### Step 2 — Convert FBX to GLB
+
+The conversion script merges all 7 FBX files into a single optimized `.glb` and writes it to `public/models/`.
+
+```bash
+# Convert a single character
+npm run convert-model -- amy
+
+# Convert all characters at once
+npm run convert-model
+```
+
+**What the script does:**
+
+1. Converts each FBX to a temporary GLB via [FBX2glTF](https://github.com/facebookincubator/FBX2glTF)
+2. Loads the base character mesh (T-Pose with skeleton and textures)
+3. Merges all 6 animation clips into the base document, matching bones by name
+4. Resamples keyframes (removes redundant 60fps frames)
+5. Deduplicates accessors and textures
+6. Prunes unused resources
+7. Quantizes vertex data (positions, normals, UVs)
+8. Compresses textures to WebP at target resolution
+9. Applies meshopt compression on geometry and animation data
+10. Writes the final `.glb` to `public/models/<character>.glb`
+
+**Tuning parameters:**
+
+Edit `buildCharacterConfig()` in `scripts/convert-mixamo.ts` to adjust conversion settings:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `textureSize` | `1024` | Max texture dimension in pixels. Lower to `512` for smaller files (mobile). |
+| `textureFormat` | `'webp'` | `'webp'` for smallest size, `'png'` if WebP causes visual issues. |
+| `compressionLevel` | `'medium'` | Meshopt level: `'low'`, `'medium'`, or `'high'`. Higher = smaller but slower to encode. |
+| `keepIntermediate` | `false` | Set to `true` to also write an uncompressed GLB for debugging in [glTF Viewer](https://gltf-viewer.donmccurdy.com). |
+
+**Debugging conversion issues:**
+
+- Set `keepIntermediate: true` and inspect the uncompressed GLB at https://gltf-viewer.donmccurdy.com
+- Check that bone names match between the base mesh and animation files (they should if all files came from the same Mixamo character)
+- The script logs channel counts per animation; if a clip shows 0 channels, the bone name mapping failed
 
 ### Development
 
@@ -336,7 +409,7 @@ interface TourStep {
 │           ├── index.ts                Public exports
 │           ├── PageAssistantProvider.tsx  Context, API, click-to-walk, tour, speech
 │           ├── AssistantCanvas.tsx        R3F Canvas, lighting, camera
-│           ├── CharacterModel.tsx         FBX loading, animation mixer, walking
+│           ├── CharacterModel.tsx         GLB loading, animation mixer, walking
 │           ├── BoneOverrideController.tsx Head/neck/spine look-at & arm IK system
 │           ├── SpeechBubble.tsx           Floating bubble anchored to character head
 │           ├── useSpeech.ts              Web Speech API wrapper with voice selection
@@ -344,8 +417,11 @@ interface TourStep {
 │           ├── useScreenToWorld.ts        Screen-to-world coordinate projection
 │           ├── constants.ts              Characters, bones, animation config
 │           └── types.ts                  TypeScript interfaces
+├── scripts/
+│   └── convert-mixamo.ts       FBX-to-GLB conversion script
 ├── public/
-│   └── mixamo_files/           3D character assets (FBX)
+│   ├── models/                 Optimized GLB character files (generated)
+│   └── mixamo_files/           Source FBX files from Mixamo (not committed)
 ├── firebase.json               Firebase Hosting config
 ├── vite.config.ts              Vite config
 ├── tsconfig.json               TypeScript config

@@ -118,7 +118,7 @@ export function AssistantCanvas({
   return (
     <div data-page-assistant-canvas style={wrapperStyle} className={className}>
       <Canvas
-        shadows
+        shadows={{ type: THREE.PCFShadowMap }}
         gl={{
           alpha: true,
           antialias: true,
