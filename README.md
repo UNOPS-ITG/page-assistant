@@ -32,17 +32,17 @@ Built with **React**, **Three.js**, and **React Three Fiber**.
 
 <table>
   <tr>
-    <td align="center"><img src="public/characters/amy.png" width="120" /><br /><b>Amy</b></td>
-    <td align="center"><img src="public/characters/sophie.png" width="120" /><br /><b>Sophie</b></td>
-    <td align="center"><img src="public/characters/michelle.png" width="120" /><br /><b>Michelle</b></td>
     <td align="center"><img src="public/characters/aj.png" width="120" /><br /><b>AJ</b></td>
+    <td align="center"><img src="public/characters/amy.png" width="120" /><br /><b>Amy</b></td>
     <td align="center"><img src="public/characters/boss.png" width="120" /><br /><b>Boss</b></td>
-  </tr>
-  <tr>
     <td align="center"><img src="public/characters/brian.png" width="120" /><br /><b>Brian</b></td>
     <td align="center"><img src="public/characters/doozy.png" width="120" /><br /><b>Doozy</b></td>
+  </tr>
+  <tr>
     <td align="center"><img src="public/characters/joe.png" width="120" /><br /><b>Joe</b></td>
+    <td align="center"><img src="public/characters/michelle.png" width="120" /><br /><b>Michelle</b></td>
     <td align="center"><img src="public/characters/mousey.png" width="120" /><br /><b>Mousey</b></td>
+    <td align="center"><img src="public/characters/sophie.png" width="120" /><br /><b>Sophie</b></td>
     <td></td>
   </tr>
 </table>
