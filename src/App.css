@@ -944,6 +944,63 @@ main {
   gap: 0.3rem;
 }
 
+.tour-voice-visual-compact {
+  padding: 0.25rem 0.4rem;
+  border-top: 1px solid var(--border, #e2e2e2);
+}
+
+.tour-voice-visual-compact .voice-disclosure-trigger {
+  font-size: 0.68rem;
+}
+
+.tour-voice-selector-inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.tour-voice-selector-inline .voice-mode-toggle {
+  align-self: center;
+}
+
+.tour-voice-selector-inline .voice-pref-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.tour-voice-selector-inline .voice-pref-select {
+  font-size: 0.65rem;
+  padding: 0.18rem 0.25rem;
+}
+
+.tour-voice-selector-inline > select.selector-dropdown {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.65rem;
+  padding: 0.18rem 0.25rem;
+}
+
+.voice-section-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-bottom: 0.1rem;
+}
+
+.tour-voice-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tour-voice-header-row .tour-global-toggles {
+  margin-left: auto;
+}
+
 .tour-voice-fieldset,
 .tour-toggles-fieldset {
   border: none;
@@ -1269,7 +1326,8 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  max-height: 180px;
+  min-height: 60px;
+  max-height: 100px;
   overflow-y: auto;
   padding-right: 0.25rem;
   scrollbar-width: thin;

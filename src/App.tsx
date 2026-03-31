@@ -344,8 +344,8 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                 See pricing
               </a>
             </div>
-            <p className="hero-hint">Click on {characterName} to make {pronoun} dance!</p>
-            <p className="hero-hint">Click anywhere on the page to walk {characterName} there</p>
+            <p className="hero-hint">Click on {characterName} to see {pronoun} dance!</p>
+            <p className="hero-hint">Click anywhere on the page to walk {characterName} there.</p>
           </div>
         </section>
 
@@ -601,7 +601,27 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                   parsedConfig ? (
                     <div className="tour-visual-editor">
                       <div className="tour-editor-toolbar">
-                        <fieldset className="tour-toggles-fieldset" disabled={assistant.isTourActive}>
+                        <div className="tour-toolbar-right">
+                          <div className="tour-view-tabs">
+                            <button type="button" className="tour-view-tab tour-view-tab-active"
+                              onClick={() => setTourViewMode('visual')}>Visual</button>
+                            <button type="button" className="tour-view-tab"
+                              onClick={() => setTourViewMode('json')}>JSON</button>
+                          </div>
+                          <button type="button" className="tour-expand-btn" onClick={() => setPopupView('visual')} title="Expand editor" aria-label="Expand visual editor">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+                          </button>
+                        </div>
+                      </div>
+                      <fieldset className="tour-voice-fieldset tour-voice-visual-compact" disabled={assistant.isTourActive}>
+                        <div className="tour-voice-header-row">
+                          <button type="button" className={`voice-disclosure-trigger${voiceOpen ? ' voice-disclosure-trigger-open' : ''}`}
+                            onClick={() => setVoiceOpen(!voiceOpen)}>
+                            <svg className="voice-disclosure-chevron" width="12" height="12" viewBox="0 0 20 20" fill="none" aria-hidden>
+                              <path d="M8 6l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Voice Settings
+                          </button>
                           <div className="tour-global-toggles">
                             <label className={`tour-toggle${parsedConfig.showSpeechBubble !== false ? ' tour-toggle-on' : ''}`}>
                               <span className="toggle-track" /><span>Speech Bubble</span>
@@ -619,19 +639,49 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                                 onChange={(e) => updateConfig((c) => ({ ...c, autoSpeak: e.target.checked }))} />
                             </label>
                           </div>
-                        </fieldset>
-                        <div className="tour-toolbar-right">
-                          <div className="tour-view-tabs">
-                            <button type="button" className="tour-view-tab tour-view-tab-active"
-                              onClick={() => setTourViewMode('visual')}>Visual</button>
-                            <button type="button" className="tour-view-tab"
-                              onClick={() => setTourViewMode('json')}>JSON</button>
-                          </div>
-                          <button type="button" className="tour-expand-btn" onClick={() => setPopupView('visual')} title="Expand editor" aria-label="Expand visual editor">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
-                          </button>
                         </div>
-                      </div>
+                        {voiceOpen && (
+                          <div className="tour-voice-selector tour-voice-selector-inline">
+                            <div className="voice-mode-toggle">
+                              <button type="button" className={`voice-mode-btn${voiceMode === 'preference' ? ' voice-mode-btn-active' : ''}`}
+                                onClick={() => setVoiceMode('preference')}>Preference</button>
+                              <button type="button" className={`voice-mode-btn${voiceMode === 'exact' ? ' voice-mode-btn-active' : ''}`}
+                                onClick={() => setVoiceMode('exact')}>Exact Voice</button>
+                            </div>
+                            {voiceMode === 'preference' ? (
+                              <div className="voice-pref-row">
+                                <select className="selector-dropdown voice-pref-select" value={voicePref.lang ?? ''}
+                                  onChange={(e) => setVoicePref((p: VoicePreference) => ({ ...p, lang: e.target.value || undefined }))} aria-label="Language">
+                                  <option value="">Any lang</option>
+                                  {availableLangs.map((l) => <option key={l} value={l}>{l}</option>)}
+                                </select>
+                                <select className="selector-dropdown voice-pref-select" value={voicePref.gender ?? ''}
+                                  onChange={(e) => setVoicePref((p: VoicePreference) => ({ ...p, gender: (e.target.value || undefined) as VoicePreference['gender'] }))} aria-label="Gender">
+                                  <option value="">Any gender</option>
+                                  <option value="female">Female</option>
+                                  <option value="male">Male</option>
+                                </select>
+                                <select className="selector-dropdown voice-pref-select" value={voicePref.quality ?? 'any'}
+                                  onChange={(e) => setVoicePref((p: VoicePreference) => ({ ...p, quality: (e.target.value || undefined) as VoicePreference['quality'] }))} aria-label="Quality">
+                                  <option value="any">Any quality</option>
+                                  <option value="neural">Neural only</option>
+                                  <option value="online">Online+</option>
+                                </select>
+                              </div>
+                            ) : (
+                              <select className="selector-dropdown" value={exactVoiceName}
+                                onChange={(e) => setExactVoiceName(e.target.value)} aria-label="Exact voice">
+                                <option value="">Select a voice…</option>
+                                {voicesByQuality.map(({ tier, voices: tierVoices }) => (
+                                  <optgroup key={tier} label={tier}>
+                                    {tierVoices.map((v) => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        )}
+                      </fieldset>
                       <div className="tour-steps-list">
                         {parsedConfig.steps.map((step, idx) => (
                           <div className="tour-step-card" key={idx}>
@@ -684,7 +734,6 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                           </div>
                         ))}
                       </div>
-                      <button type="button" className="ctrl-btn tour-add-step" disabled={assistant.isTourActive} onClick={addStep}>+ Add Step</button>
                     </div>
                   ) : (
                     <div className="tour-json-error">Invalid JSON — switch to JSON tab to fix syntax errors</div>
@@ -694,13 +743,6 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                 {tourViewMode === 'json' && (
                   <div className="tour-json-section">
                     <div className="tour-json-toolbar">
-                      <button type="button" className={`voice-disclosure-trigger${voiceOpen ? ' voice-disclosure-trigger-open' : ''}`}
-                        onClick={() => setVoiceOpen(!voiceOpen)} disabled={assistant.isTourActive}>
-                        <svg className="voice-disclosure-chevron" width="12" height="12" viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path d="M8 6l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        Voice Settings
-                      </button>
                       <div className="tour-toolbar-right">
                         <div className="tour-view-tabs">
                           <button type="button" className="tour-view-tab"
@@ -713,9 +755,37 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                         </button>
                       </div>
                     </div>
-                    {voiceOpen && (
-                      <fieldset className="tour-voice-fieldset" disabled={assistant.isTourActive}>
-                        <div className="tour-voice-selector">
+                    <fieldset className="tour-voice-fieldset tour-voice-visual-compact" disabled={assistant.isTourActive}>
+                      <div className="tour-voice-header-row">
+                        <button type="button" className={`voice-disclosure-trigger${voiceOpen ? ' voice-disclosure-trigger-open' : ''}`}
+                          onClick={() => setVoiceOpen(!voiceOpen)}>
+                          <svg className="voice-disclosure-chevron" width="12" height="12" viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path d="M8 6l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          Voice Settings
+                        </button>
+                        {parsedConfig && (
+                          <div className="tour-global-toggles">
+                            <label className={`tour-toggle${parsedConfig.showSpeechBubble !== false ? ' tour-toggle-on' : ''}`}>
+                              <span className="toggle-track" /><span>Speech Bubble</span>
+                              <input type="checkbox" hidden checked={parsedConfig.showSpeechBubble !== false}
+                                onChange={(e) => updateConfig((c) => ({ ...c, showSpeechBubble: e.target.checked }))} />
+                            </label>
+                            <label className={`tour-toggle${parsedConfig.speechEnabled !== false ? ' tour-toggle-on' : ''}`}>
+                              <span className="toggle-track" /><span>Speech</span>
+                              <input type="checkbox" hidden checked={parsedConfig.speechEnabled !== false}
+                                onChange={(e) => updateConfig((c) => ({ ...c, speechEnabled: e.target.checked }))} />
+                            </label>
+                            <label className={`tour-toggle${parsedConfig.autoSpeak !== false ? ' tour-toggle-on' : ''}`}>
+                              <span className="toggle-track" /><span>Auto-Speak</span>
+                              <input type="checkbox" hidden checked={parsedConfig.autoSpeak !== false}
+                                onChange={(e) => updateConfig((c) => ({ ...c, autoSpeak: e.target.checked }))} />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                      {voiceOpen && (
+                        <div className="tour-voice-selector tour-voice-selector-inline">
                           <div className="voice-mode-toggle">
                             <button type="button" className={`voice-mode-btn${voiceMode === 'preference' ? ' voice-mode-btn-active' : ''}`}
                               onClick={() => setVoiceMode('preference')}>Preference</button>
@@ -754,8 +824,8 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                             </select>
                           )}
                         </div>
-                      </fieldset>
-                    )}
+                      )}
+                    </fieldset>
                     <textarea className="tour-json-editor" value={tourJson}
                       onChange={(e) => { setTourJson(e.target.value); setTourJsonError(''); }}
                       spellCheck={false} rows={5} disabled={assistant.isTourActive} aria-label="Tour JSON configuration" />
@@ -799,6 +869,48 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                         <input type="checkbox" hidden checked={parsedConfig.autoSpeak !== false}
                           onChange={(e) => updateConfig((c) => ({ ...c, autoSpeak: e.target.checked }))} />
                       </label>
+                    </div>
+                  </fieldset>
+                  <fieldset className="tour-voice-fieldset" disabled={assistant.isTourActive}>
+                    <div className="tour-voice-selector">
+                      <div className="voice-section-label">Voice Settings</div>
+                      <div className="voice-mode-toggle">
+                        <button type="button" className={`voice-mode-btn${voiceMode === 'preference' ? ' voice-mode-btn-active' : ''}`}
+                          onClick={() => setVoiceMode('preference')}>Preference</button>
+                        <button type="button" className={`voice-mode-btn${voiceMode === 'exact' ? ' voice-mode-btn-active' : ''}`}
+                          onClick={() => setVoiceMode('exact')}>Exact Voice</button>
+                      </div>
+                      {voiceMode === 'preference' ? (
+                        <div className="voice-pref-row">
+                          <select className="selector-dropdown voice-pref-select" value={voicePref.lang ?? ''}
+                            onChange={(e) => setVoicePref((p: VoicePreference) => ({ ...p, lang: e.target.value || undefined }))} aria-label="Language">
+                            <option value="">Any lang</option>
+                            {availableLangs.map((l) => <option key={l} value={l}>{l}</option>)}
+                          </select>
+                          <select className="selector-dropdown voice-pref-select" value={voicePref.gender ?? ''}
+                            onChange={(e) => setVoicePref((p: VoicePreference) => ({ ...p, gender: (e.target.value || undefined) as VoicePreference['gender'] }))} aria-label="Gender">
+                            <option value="">Any gender</option>
+                            <option value="female">Female</option>
+                            <option value="male">Male</option>
+                          </select>
+                          <select className="selector-dropdown voice-pref-select" value={voicePref.quality ?? 'any'}
+                            onChange={(e) => setVoicePref((p: VoicePreference) => ({ ...p, quality: (e.target.value || undefined) as VoicePreference['quality'] }))} aria-label="Quality">
+                            <option value="any">Any quality</option>
+                            <option value="neural">Neural only</option>
+                            <option value="online">Online+</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <select className="selector-dropdown" value={exactVoiceName}
+                          onChange={(e) => setExactVoiceName(e.target.value)} aria-label="Exact voice">
+                          <option value="">Select a voice…</option>
+                          {voicesByQuality.map(({ tier, voices: tierVoices }) => (
+                            <optgroup key={tier} label={tier}>
+                              {tierVoices.map((v) => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+                            </optgroup>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   </fieldset>
                   <div className="tour-steps-list tour-steps-list-popup">
