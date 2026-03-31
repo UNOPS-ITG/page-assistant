@@ -18,8 +18,8 @@ export const ROTATION_LIMITS = {
   SPINE_FACTOR: 0.3,
   ARM_BLEND_SPEED: 8,
   MAX_POINT_AT_TURN: Math.PI / 2,
-  MIN_POINT_AT_TURN: Math.PI / 4,
-  MAX_ARM_IK_ANGLE: Math.PI * 0.42,
+  MIN_POINT_AT_TURN: Math.PI / 12,
+  MAX_ARM_IK_ANGLE: Math.PI * 0.55,
 } as const;
 
 export const ANIMATION_CONFIG = {

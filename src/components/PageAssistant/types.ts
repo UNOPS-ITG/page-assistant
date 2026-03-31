@@ -30,6 +30,66 @@ export interface ArmRestData {
   rightForearmRestQuat: Quaternion;
 }
 
+// --- Tour types (driver.js-inspired) ---
+
+export type TourStepAction = 'walkTo' | 'pointAt' | 'wave' | 'talk' | 'dance' | 'idle';
+
+export interface TourStepPopover {
+  title?: string;
+  description?: string;
+}
+
+export interface TourStep {
+  element?: string;
+  action?: TourStepAction;
+  popover?: TourStepPopover;
+  voice?: string | VoicePreference;
+  speechEnabled?: boolean;
+  autoSpeak?: boolean;
+  showSpeechBubble?: boolean;
+  duration?: number;
+  walkTo?: boolean;
+  onHighlighted?: () => void;
+  onDeselected?: () => void;
+}
+
+export interface TourConfig {
+  steps: TourStep[];
+  animate?: boolean;
+  showSpeechBubble?: boolean;
+  speechEnabled?: boolean;
+  autoSpeak?: boolean;
+  defaultVoice?: string | VoicePreference;
+  onStart?: () => void;
+  onComplete?: () => void;
+  onStepChange?: (stepIndex: number, step: TourStep) => void;
+  onDestroyed?: () => void;
+}
+
+// --- Voice preference (portable across devices) ---
+
+export type VoiceQuality = 'neural' | 'online' | 'any';
+
+export interface VoicePreference {
+  lang?: string;
+  gender?: 'male' | 'female';
+  quality?: VoiceQuality;
+  name?: string;
+}
+
+// --- Speech types ---
+
+export interface SpeechOptions {
+  voice?: string | VoicePreference;
+}
+
+export interface SpeechBubbleData {
+  title?: string;
+  description?: string;
+  showPlayButton?: boolean;
+  visible: boolean;
+}
+
 export interface PageAssistantAPI {
   walkTo(targetElement: HTMLElement | string, options?: WalkOptions): Promise<void>;
   walkToPosition(screenX: number, screenY: number, options?: WalkOptions): Promise<void>;
@@ -57,6 +117,22 @@ export interface PageAssistantAPI {
   onStateChange: (callback: (state: AssistantState) => void) => () => void;
   onClick: (callback: () => void) => () => void;
   onHover: (callback: (hovering: boolean) => void) => () => void;
+
+  say(text: string, options?: SpeechOptions): void;
+  stopSpeaking(): void;
+  showBubble(data: Omit<SpeechBubbleData, 'visible'>): void;
+  hideBubble(): void;
+
+  startTour(config: TourConfig): void;
+  nextStep(): void;
+  prevStep(): void;
+  restartTour(): void;
+  stopTour(): void;
+  isTourActive: boolean;
+  currentTourStep: number;
+  tourStepCount: number;
+
+  getAvailableVoices(): SpeechSynthesisVoice[];
 }
 
 export type LookMode = 'cursor' | 'element' | 'forward';
@@ -78,6 +154,7 @@ export interface AssistantController {
   setLookTarget(target: LookTarget): void;
   setCharacterWorldX(worldX: number): void;
   getCharacterScreenX(): number;
+  getHeadScreenPosition(): { x: number; y: number } | null;
   getClipDuration(state: AssistantState): number;
   cancelCurrentAction(): void;
   setWalkFacing(angle: number): void;

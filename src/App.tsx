@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PageAssistantProvider, usePageAssistant } from './components/PageAssistant';
+import type { TourConfig, TourStep, TourStepAction, VoicePreference } from './components/PageAssistant';
 import { CHARACTERS, DEFAULT_CHARACTER_ID } from './components/PageAssistant/constants';
+import { voiceTag as voiceTagFn } from './components/PageAssistant/useSpeech';
 import './App.css';
 
 type ThemeId = 'midnight' | 'light' | 'grey';
@@ -40,14 +42,136 @@ interface DemoContentProps {
   onThemeChange: (theme: ThemeId) => void;
 }
 
+type ControlTab = 'actions' | 'tour';
+type TourViewMode = 'visual' | 'json';
+
+function buildDefaultTourJson(name: string): string {
+  const config: TourConfig = {
+    showSpeechBubble: true,
+    speechEnabled: true,
+    autoSpeak: true,
+    defaultVoice: { lang: 'en-US', quality: 'neural' },
+    steps: [
+      {
+        element: '.hero',
+        action: 'walkTo',
+        popover: {
+          title: 'Welcome!',
+          description: `Hi! I'm ${name}, your page assistant. Let me show you around!`,
+        },
+        duration: 2000,
+      },
+      {
+        element: '#features',
+        action: 'walkTo',
+        popover: {
+          title: 'Features',
+          description: `Here are the features that make ${name} special. Walk, point, wave — it's all built in.`,
+        },
+        duration: 2500,
+      },
+      {
+        element: '#feature-1',
+        action: 'pointAt',
+        walkTo: true,
+        popover: {
+          title: 'Spatial Awareness',
+          description: `${name} can walk to any element on your page using CSS selectors.`,
+        },
+        duration: 3000,
+      },
+      {
+        element: '#pricing',
+        action: 'walkTo',
+        popover: {
+          title: 'Pricing',
+          description: 'Check out our simple pricing plans. Pick the one that works for you!',
+        },
+        duration: 2500,
+      },
+      {
+        action: 'wave',
+        popover: {
+          title: 'That\'s the tour!',
+          description: 'Thanks for watching! Click any of the controls below to try the API yourself.',
+        },
+        duration: 2000,
+      },
+    ],
+  };
+  return JSON.stringify(config, null, 2);
+}
+
 function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: DemoContentProps) {
   const assistant = usePageAssistant();
   const [state, setState] = useState(assistant.currentState);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const [controlTab, setControlTab] = useState<ControlTab>('actions');
 
   const activeCharacter = CHARACTERS[characterId];
   const characterName = activeCharacter?.label ?? 'Assistant';
   const pronoun = activeCharacter?.sex === 'male' ? 'him' : 'her';
+
+  const [tourJson, setTourJson] = useState(() => buildDefaultTourJson(characterName));
+  const [tourJsonError, setTourJsonError] = useState('');
+  const [tourViewMode, setTourViewMode] = useState<TourViewMode>('visual');
+  const [popupView, setPopupView] = useState<'visual' | 'json' | null>(null);
+  const [voiceMode, setVoiceMode] = useState<'preference' | 'exact'>('preference');
+  const [voicePref, setVoicePref] = useState<VoicePreference>({ lang: 'en-US', quality: 'neural' });
+  const [exactVoiceName, setExactVoiceName] = useState('');
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const tourJsonRef = useRef(tourJson);
+  tourJsonRef.current = tourJson;
+
+  const availableLangs = Array.from(new Set(voices.map((v) => v.lang))).sort();
+
+  const voicesByQuality = (() => {
+    const groups: Record<string, SpeechSynthesisVoice[]> = {};
+    const order = ['Neural', 'Online', 'Network', 'Standard'];
+    for (const tier of order) groups[tier] = [];
+    for (const v of voices) {
+      const tag = voiceTagFn(v);
+      if (!groups[tag]) groups[tag] = [];
+      groups[tag].push(v);
+    }
+    return order.filter((t) => groups[t].length > 0).map((t) => ({ tier: t, voices: groups[t] }));
+  })();
+
+  useEffect(() => {
+    setTourJson(buildDefaultTourJson(characterName));
+  }, [characterName]);
+
+  useEffect(() => {
+    setTourJson((prev) => {
+      try {
+        const obj = JSON.parse(prev);
+        if (obj && typeof obj === 'object') {
+          if (voiceMode === 'exact' && exactVoiceName) {
+            obj.defaultVoice = exactVoiceName;
+          } else {
+            const cleaned: VoicePreference = {};
+            if (voicePref.lang) cleaned.lang = voicePref.lang;
+            if (voicePref.gender) cleaned.gender = voicePref.gender;
+            if (voicePref.quality && voicePref.quality !== 'any') cleaned.quality = voicePref.quality;
+            obj.defaultVoice = Object.keys(cleaned).length > 0 ? cleaned : undefined;
+          }
+          return JSON.stringify(obj, null, 2);
+        }
+      } catch { /* leave JSON as-is if invalid */ }
+      return prev;
+    });
+  }, [voicePref, voiceMode, exactVoiceName]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const load = () => {
+      const v = speechSynthesis.getVoices();
+      if (v.length > 0) setVoices(v);
+    };
+    load();
+    speechSynthesis.addEventListener('voiceschanged', load);
+    return () => speechSynthesis.removeEventListener('voiceschanged', load);
+  }, []);
 
   useEffect(() => {
     setState(assistant.currentState);
@@ -67,6 +191,81 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
   }, [assistant, state]);
 
   const isHidden = state === 'hidden';
+
+  const handlePlayTour = useCallback(() => {
+    try {
+      const parsed = JSON.parse(tourJsonRef.current) as TourConfig;
+      setTourJsonError('');
+      assistant.startTour(parsed);
+    } catch (err) {
+      setTourJsonError(err instanceof Error ? err.message : 'Invalid JSON');
+    }
+  }, [assistant]);
+
+  const handleStopTour = useCallback(() => {
+    assistant.stopTour();
+  }, [assistant]);
+
+  const TOUR_ACTIONS: TourStepAction[] = ['walkTo', 'pointAt', 'wave', 'talk', 'dance', 'idle'];
+
+  const parsedConfig = (() => {
+    try {
+      const obj = JSON.parse(tourJson);
+      if (obj && typeof obj === 'object' && Array.isArray(obj.steps)) return obj as TourConfig;
+    } catch { /* invalid JSON */ }
+    return null;
+  })();
+
+  const updateConfig = useCallback((updater: (config: TourConfig) => TourConfig) => {
+    setTourJson((prev) => {
+      try {
+        const obj = JSON.parse(prev) as TourConfig;
+        const updated = updater(obj);
+        return JSON.stringify(updated, null, 2);
+      } catch { return prev; }
+    });
+    setTourJsonError('');
+  }, []);
+
+  const updateStep = useCallback((index: number, patch: Partial<TourStep>) => {
+    updateConfig((config) => ({
+      ...config,
+      steps: config.steps.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    }));
+  }, [updateConfig]);
+
+  const updateStepPopover = useCallback((index: number, field: 'title' | 'description', value: string) => {
+    updateConfig((config) => ({
+      ...config,
+      steps: config.steps.map((s, i) =>
+        i === index ? { ...s, popover: { ...s.popover, [field]: value || undefined } } : s
+      ),
+    }));
+  }, [updateConfig]);
+
+  const removeStep = useCallback((index: number) => {
+    updateConfig((config) => ({
+      ...config,
+      steps: config.steps.filter((_, i) => i !== index),
+    }));
+  }, [updateConfig]);
+
+  const moveStep = useCallback((index: number, direction: -1 | 1) => {
+    updateConfig((config) => {
+      const steps = [...config.steps];
+      const target = index + direction;
+      if (target < 0 || target >= steps.length) return config;
+      [steps[index], steps[target]] = [steps[target], steps[index]];
+      return { ...config, steps };
+    });
+  }, [updateConfig]);
+
+  const addStep = useCallback(() => {
+    updateConfig((config) => ({
+      ...config,
+      steps: [...config.steps, { action: 'wave', popover: { title: '', description: '' }, duration: 2000 }],
+    }));
+  }, [updateConfig]);
 
   return (
     <div className="demo-root">
@@ -268,6 +467,22 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                 </div>
               </div>
             </div>
+            <div className="control-tabs">
+              <button
+                type="button"
+                className={`control-tab${controlTab === 'actions' ? ' control-tab-active' : ''}`}
+                onClick={() => setControlTab('actions')}
+              >
+                Actions
+              </button>
+              <button
+                type="button"
+                className={`control-tab${controlTab === 'tour' ? ' control-tab-active' : ''}`}
+                onClick={() => setControlTab('tour')}
+              >
+                Tour
+              </button>
+            </div>
             <button
               type="button"
               className={`mobile-actions-trigger${mobileActionsOpen ? ' mobile-actions-trigger-active' : ''}`}
@@ -277,75 +492,447 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
               {mobileActionsOpen ? 'Close' : 'Actions'}
             </button>
           </div>
-          <div className="control-buttons">
-            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.wave({ duration: 2000 }))}>
-              Wave
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.talk({ duration: 3000 }))}>
-              Talk
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.dance({ duration: 4000 }))}>
-              Dance
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => assistant.idle()}>
-              Idle
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.walkTo('#features'))}>
-              Walk to Features
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.walkTo('#pricing'))}>
-              Walk to Pricing
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.point({ duration: 2500 }))}>
-              Point
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#features', { duration: 3000 }))}>
-              Point At Features
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#pricing', { duration: 3000 }))}>
-              Point At Pricing
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#features', { walkTo: true, duration: 3000 }))}>
-              Walk &amp; Point Features
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#pricing', { walkTo: true, duration: 3000 }))}>
-              Walk &amp; Point Pricing
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => assistant.turnLeft()}>
-              Turn Left
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => assistant.turnRight()}>
-              Turn Right
-            </button>
-            <button type="button" className="ctrl-btn" onClick={() => assistant.straightenUp()}>
-              Straighten Up
-            </button>
-            <label className={`toggle-switch${assistant.isFollowingCursor ? ' toggle-switch-on' : ''}`}>
-              <span className="toggle-track" />
-              <span>Follow Cursor</span>
-              <input
-                type="checkbox"
-                checked={assistant.isFollowingCursor}
-                onChange={() => assistant.isFollowingCursor ? assistant.lookForward() : assistant.lookAtCursor()}
-                hidden
-              />
-            </label>
-            <label className={`toggle-switch${assistant.isFollowingWithArms ? ' toggle-switch-on' : ''}`}>
-              <span className="toggle-track" />
-              <span>Follow with Arms</span>
-              <input
-                type="checkbox"
-                checked={assistant.isFollowingWithArms}
-                onChange={() => assistant.isFollowingWithArms ? assistant.stopFollowingCursorWithArms() : assistant.followCursorWithArms()}
-                hidden
-              />
-            </label>
-            <button type="button" className="ctrl-btn ctrl-btn-muted" onClick={toggleVisibility}>
-              {isHidden ? 'Show' : 'Hide'}
-            </button>
-          </div>
+
+          {controlTab === 'actions' && (
+            <div className="control-buttons">
+              <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.wave({ duration: 2000 }))}>
+                Wave
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.talk({ duration: 3000 }))}>
+                Talk
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.dance({ duration: 4000 }))}>
+                Dance
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => assistant.idle()}>
+                Idle
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.walkTo('#features'))}>
+                Walk to Features
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.walkTo('#pricing'))}>
+                Walk to Pricing
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.point({ duration: 2500 }))}>
+                Point
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#features', { duration: 3000 }))}>
+                Point At Features
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#pricing', { duration: 3000 }))}>
+                Point At Pricing
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#features', { walkTo: true, duration: 3000 }))}>
+                Walk &amp; Point Features
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#pricing', { walkTo: true, duration: 3000 }))}>
+                Walk &amp; Point Pricing
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => assistant.turnLeft()}>
+                Turn Left
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => assistant.turnRight()}>
+                Turn Right
+              </button>
+              <button type="button" className="ctrl-btn" onClick={() => assistant.straightenUp()}>
+                Straighten Up
+              </button>
+              <label className={`toggle-switch${assistant.isFollowingCursor ? ' toggle-switch-on' : ''}`}>
+                <span className="toggle-track" />
+                <span>Follow Cursor</span>
+                <input
+                  type="checkbox"
+                  checked={assistant.isFollowingCursor}
+                  onChange={() => assistant.isFollowingCursor ? assistant.lookForward() : assistant.lookAtCursor()}
+                  hidden
+                />
+              </label>
+              <label className={`toggle-switch${assistant.isFollowingWithArms ? ' toggle-switch-on' : ''}`}>
+                <span className="toggle-track" />
+                <span>Follow with Arms</span>
+                <input
+                  type="checkbox"
+                  checked={assistant.isFollowingWithArms}
+                  onChange={() => assistant.isFollowingWithArms ? assistant.stopFollowingCursorWithArms() : assistant.followCursorWithArms()}
+                  hidden
+                />
+              </label>
+              <button type="button" className="ctrl-btn ctrl-btn-muted" onClick={toggleVisibility}>
+                {isHidden ? 'Show' : 'Hide'}
+              </button>
+            </div>
+          )}
+
+          {controlTab === 'tour' && (
+            <div className="tour-panel">
+              <div className="tour-panel-top">
+                <div className="tour-controls">
+                  {assistant.isTourActive ? (
+                    <button type="button" className="ctrl-btn ctrl-btn-danger" onClick={handleStopTour}>
+                      Stop Tour
+                    </button>
+                  ) : (
+                    <button type="button" className="ctrl-btn ctrl-btn-primary" onClick={handlePlayTour}>
+                      Play Tour
+                    </button>
+                  )}
+                  {assistant.isTourActive && (
+                    <span className="tour-step-badge">
+                      Step {assistant.currentTourStep + 1}
+                    </span>
+                  )}
+                </div>
+                <div className="tour-view-tabs">
+                  <button
+                    type="button"
+                    className={`tour-view-tab${tourViewMode === 'visual' ? ' tour-view-tab-active' : ''}`}
+                    onClick={() => setTourViewMode('visual')}
+                  >
+                    Visual
+                  </button>
+                  <button
+                    type="button"
+                    className={`tour-view-tab${tourViewMode === 'json' ? ' tour-view-tab-active' : ''}`}
+                    onClick={() => setTourViewMode('json')}
+                  >
+                    JSON
+                  </button>
+                </div>
+                <fieldset className="tour-voice-fieldset" disabled={assistant.isTourActive}>
+                  <div className="tour-voice-selector">
+                    <div className="voice-mode-toggle">
+                      <button
+                        type="button"
+                        className={`voice-mode-btn${voiceMode === 'preference' ? ' voice-mode-btn-active' : ''}`}
+                        onClick={() => setVoiceMode('preference')}
+                      >
+                        Preference
+                      </button>
+                      <button
+                        type="button"
+                        className={`voice-mode-btn${voiceMode === 'exact' ? ' voice-mode-btn-active' : ''}`}
+                        onClick={() => setVoiceMode('exact')}
+                      >
+                        Exact Voice
+                      </button>
+                    </div>
+                    {voiceMode === 'preference' ? (
+                      <div className="voice-pref-row">
+                        <select
+                          className="selector-dropdown voice-pref-select"
+                          value={voicePref.lang ?? ''}
+                          onChange={(e) => setVoicePref((p: VoicePreference) => ({ ...p, lang: e.target.value || undefined }))}
+                          aria-label="Language"
+                        >
+                          <option value="">Any lang</option>
+                          {availableLangs.map((l) => (
+                            <option key={l} value={l}>{l}</option>
+                          ))}
+                        </select>
+                        <select
+                          className="selector-dropdown voice-pref-select"
+                          value={voicePref.gender ?? ''}
+                          onChange={(e) => setVoicePref((p: VoicePreference) => ({ ...p, gender: (e.target.value || undefined) as VoicePreference['gender'] }))}
+                          aria-label="Gender"
+                        >
+                          <option value="">Any gender</option>
+                          <option value="female">Female</option>
+                          <option value="male">Male</option>
+                        </select>
+                        <select
+                          className="selector-dropdown voice-pref-select"
+                          value={voicePref.quality ?? 'any'}
+                          onChange={(e) => setVoicePref((p: VoicePreference) => ({ ...p, quality: (e.target.value || undefined) as VoicePreference['quality'] }))}
+                          aria-label="Quality"
+                        >
+                          <option value="any" title="Accept any voice quality tier">Any quality</option>
+                          <option value="neural" title="Only voices with neural/AI synthesis (highest quality)">Neural only</option>
+                          <option value="online" title="Neural, Online, or Network voices — excludes local-only Standard voices">Online+</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <select
+                        className="selector-dropdown"
+                        value={exactVoiceName}
+                        onChange={(e) => setExactVoiceName(e.target.value)}
+                        aria-label="Exact voice"
+                      >
+                        <option value="">Select a voice…</option>
+                        {voicesByQuality.map(({ tier, voices: tierVoices }) => (
+                          <optgroup key={tier} label={tier}>
+                            {tierVoices.map((v) => (
+                              <option key={v.name} value={v.name}>
+                                {v.name} ({v.lang})
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </fieldset>
+              </div>
+              {tourJsonError && (
+                <div className="tour-json-error">{tourJsonError}</div>
+              )}
+
+              {tourViewMode === 'visual' && (
+                parsedConfig ? (
+                  <div className="tour-visual-editor">
+                    <div className="tour-editor-toolbar">
+                      <fieldset className="tour-toggles-fieldset" disabled={assistant.isTourActive}>
+                        <div className="tour-global-toggles">
+                        <label className={`tour-toggle${parsedConfig.showSpeechBubble !== false ? ' tour-toggle-on' : ''}`}>
+                          <span className="toggle-track" />
+                          <span>Speech Bubble</span>
+                          <input type="checkbox" hidden checked={parsedConfig.showSpeechBubble !== false}
+                            onChange={(e) => updateConfig((c) => ({ ...c, showSpeechBubble: e.target.checked }))} />
+                        </label>
+                        <label className={`tour-toggle${parsedConfig.speechEnabled !== false ? ' tour-toggle-on' : ''}`}>
+                          <span className="toggle-track" />
+                          <span>Speech</span>
+                          <input type="checkbox" hidden checked={parsedConfig.speechEnabled !== false}
+                            onChange={(e) => updateConfig((c) => ({ ...c, speechEnabled: e.target.checked }))} />
+                        </label>
+                        <label className={`tour-toggle${parsedConfig.autoSpeak !== false ? ' tour-toggle-on' : ''}`}>
+                          <span className="toggle-track" />
+                          <span>Auto-Speak</span>
+                          <input type="checkbox" hidden checked={parsedConfig.autoSpeak !== false}
+                            onChange={(e) => updateConfig((c) => ({ ...c, autoSpeak: e.target.checked }))} />
+                        </label>
+                        </div>
+                      </fieldset>
+                      <button type="button" className="tour-expand-btn" onClick={() => setPopupView('visual')} title="Expand editor" aria-label="Expand visual editor">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+                      </button>
+                    </div>
+                    <div className="tour-steps-list">
+                      {parsedConfig.steps.map((step, idx) => (
+                        <div className="tour-step-card" key={idx}>
+                          <div className="tour-step-header">
+                            <span className="tour-step-number">{idx + 1}</span>
+                            <select
+                              className="tour-step-action-select"
+                              value={step.action ?? 'walkTo'}
+                              onChange={(e) => updateStep(idx, { action: e.target.value as TourStepAction })}
+                              disabled={assistant.isTourActive}
+                            >
+                              {TOUR_ACTIONS.map((a) => (
+                                <option key={a} value={a}>{a}</option>
+                              ))}
+                            </select>
+                            <div className="tour-step-actions">
+                              <button type="button" className="tour-step-move" disabled={idx === 0 || assistant.isTourActive}
+                                onClick={() => moveStep(idx, -1)} aria-label="Move up" title="Move up">&#9650;</button>
+                              <button type="button" className="tour-step-move" disabled={idx === parsedConfig.steps.length - 1 || assistant.isTourActive}
+                                onClick={() => moveStep(idx, 1)} aria-label="Move down" title="Move down">&#9660;</button>
+                              <button type="button" className="tour-step-delete" disabled={assistant.isTourActive}
+                                onClick={() => removeStep(idx)} aria-label="Remove step" title="Remove step">&#10005;</button>
+                            </div>
+                          </div>
+                          <div className="tour-step-fields">
+                            {(step.action === 'walkTo' || step.action === 'pointAt') && (
+                              <label className="tour-step-field">
+                                <span className="tour-field-label">Element</span>
+                                <input type="text" className="tour-field-input"
+                                  value={step.element ?? ''} placeholder=".selector or #id"
+                                  disabled={assistant.isTourActive}
+                                  onChange={(e) => updateStep(idx, { element: e.target.value || undefined })} />
+                              </label>
+                            )}
+                            <label className="tour-step-field">
+                              <span className="tour-field-label">Title</span>
+                              <input type="text" className="tour-field-input"
+                                value={step.popover?.title ?? ''} placeholder="Step title"
+                                disabled={assistant.isTourActive}
+                                onChange={(e) => updateStepPopover(idx, 'title', e.target.value)} />
+                            </label>
+                            <label className="tour-step-field tour-step-field-wide">
+                              <span className="tour-field-label">Description</span>
+                              <input type="text" className="tour-field-input"
+                                value={step.popover?.description ?? ''} placeholder="Step description"
+                                disabled={assistant.isTourActive}
+                                onChange={(e) => updateStepPopover(idx, 'description', e.target.value)} />
+                            </label>
+                            <label className="tour-step-field tour-step-field-narrow">
+                              <span className="tour-field-label">Duration</span>
+                              <input type="number" className="tour-field-input" min={0} step={500}
+                                value={step.duration ?? ''} placeholder="ms"
+                                disabled={assistant.isTourActive}
+                                onChange={(e) => updateStep(idx, { duration: e.target.value ? Number(e.target.value) : undefined })} />
+                            </label>
+                            {step.action === 'pointAt' && (
+                              <label className={`tour-toggle tour-toggle-inline${step.walkTo ? ' tour-toggle-on' : ''}`}>
+                                <span className="toggle-track" />
+                                <span>Walk To</span>
+                                <input type="checkbox" hidden checked={!!step.walkTo}
+                                  disabled={assistant.isTourActive}
+                                  onChange={(e) => updateStep(idx, { walkTo: e.target.checked || undefined })} />
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button type="button" className="ctrl-btn tour-add-step" disabled={assistant.isTourActive} onClick={addStep}>
+                      + Add Step
+                    </button>
+                  </div>
+                ) : (
+                  <div className="tour-json-error">
+                    Invalid JSON — switch to JSON tab to fix syntax errors
+                  </div>
+                )
+              )}
+
+              {tourViewMode === 'json' && (
+                <div className="tour-json-wrapper">
+                  <textarea
+                    className="tour-json-editor"
+                    value={tourJson}
+                    onChange={(e) => {
+                      setTourJson(e.target.value);
+                      setTourJsonError('');
+                    }}
+                    spellCheck={false}
+                    rows={5}
+                    disabled={assistant.isTourActive}
+                    aria-label="Tour JSON configuration"
+                  />
+                  <button type="button" className="tour-expand-btn tour-expand-btn-float" onClick={() => setPopupView('json')} title="Expand editor" aria-label="Expand JSON editor">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {popupView && (
+        <div className="tour-popup-overlay" onClick={() => setPopupView(null)}>
+          <div className="tour-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="tour-popup-header">
+              <span className="tour-popup-title">{popupView === 'visual' ? 'Tour Steps' : 'Tour JSON'}</span>
+              <button type="button" className="tour-popup-close" onClick={() => setPopupView(null)} aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+            <div className="tour-popup-body">
+              {popupView === 'visual' && parsedConfig && (
+                <div className="tour-visual-editor tour-visual-editor-popup">
+                  <fieldset className="tour-toggles-fieldset" disabled={assistant.isTourActive}>
+                    <div className="tour-global-toggles">
+                      <label className={`tour-toggle${parsedConfig.showSpeechBubble !== false ? ' tour-toggle-on' : ''}`}>
+                        <span className="toggle-track" />
+                        <span>Speech Bubble</span>
+                        <input type="checkbox" hidden checked={parsedConfig.showSpeechBubble !== false}
+                          onChange={(e) => updateConfig((c) => ({ ...c, showSpeechBubble: e.target.checked }))} />
+                      </label>
+                      <label className={`tour-toggle${parsedConfig.speechEnabled !== false ? ' tour-toggle-on' : ''}`}>
+                        <span className="toggle-track" />
+                        <span>Speech</span>
+                        <input type="checkbox" hidden checked={parsedConfig.speechEnabled !== false}
+                          onChange={(e) => updateConfig((c) => ({ ...c, speechEnabled: e.target.checked }))} />
+                      </label>
+                      <label className={`tour-toggle${parsedConfig.autoSpeak !== false ? ' tour-toggle-on' : ''}`}>
+                        <span className="toggle-track" />
+                        <span>Auto-Speak</span>
+                        <input type="checkbox" hidden checked={parsedConfig.autoSpeak !== false}
+                          onChange={(e) => updateConfig((c) => ({ ...c, autoSpeak: e.target.checked }))} />
+                      </label>
+                    </div>
+                  </fieldset>
+                  <div className="tour-steps-list tour-steps-list-popup">
+                    {parsedConfig.steps.map((step, idx) => (
+                      <div className="tour-step-card" key={idx}>
+                        <div className="tour-step-header">
+                          <span className="tour-step-number">{idx + 1}</span>
+                          <select
+                            className="tour-step-action-select"
+                            value={step.action ?? 'walkTo'}
+                            onChange={(e) => updateStep(idx, { action: e.target.value as TourStepAction })}
+                            disabled={assistant.isTourActive}
+                          >
+                            {TOUR_ACTIONS.map((a) => (
+                              <option key={a} value={a}>{a}</option>
+                            ))}
+                          </select>
+                          <div className="tour-step-actions">
+                            <button type="button" className="tour-step-move" disabled={idx === 0 || assistant.isTourActive}
+                              onClick={() => moveStep(idx, -1)} aria-label="Move up" title="Move up">&#9650;</button>
+                            <button type="button" className="tour-step-move" disabled={idx === parsedConfig.steps.length - 1 || assistant.isTourActive}
+                              onClick={() => moveStep(idx, 1)} aria-label="Move down" title="Move down">&#9660;</button>
+                            <button type="button" className="tour-step-delete" disabled={assistant.isTourActive}
+                              onClick={() => removeStep(idx)} aria-label="Remove step" title="Remove step">&#10005;</button>
+                          </div>
+                        </div>
+                        <div className="tour-step-fields">
+                          {(step.action === 'walkTo' || step.action === 'pointAt') && (
+                            <label className="tour-step-field">
+                              <span className="tour-field-label">Element</span>
+                              <input type="text" className="tour-field-input"
+                                value={step.element ?? ''} placeholder=".selector or #id"
+                                disabled={assistant.isTourActive}
+                                onChange={(e) => updateStep(idx, { element: e.target.value || undefined })} />
+                            </label>
+                          )}
+                          <label className="tour-step-field">
+                            <span className="tour-field-label">Title</span>
+                            <input type="text" className="tour-field-input"
+                              value={step.popover?.title ?? ''} placeholder="Step title"
+                              disabled={assistant.isTourActive}
+                              onChange={(e) => updateStepPopover(idx, 'title', e.target.value)} />
+                          </label>
+                          <label className="tour-step-field tour-step-field-wide">
+                            <span className="tour-field-label">Description</span>
+                            <input type="text" className="tour-field-input"
+                              value={step.popover?.description ?? ''} placeholder="Step description"
+                              disabled={assistant.isTourActive}
+                              onChange={(e) => updateStepPopover(idx, 'description', e.target.value)} />
+                          </label>
+                          <label className="tour-step-field tour-step-field-narrow">
+                            <span className="tour-field-label">Duration</span>
+                            <input type="number" className="tour-field-input" min={0} step={500}
+                              value={step.duration ?? ''} placeholder="ms"
+                              disabled={assistant.isTourActive}
+                              onChange={(e) => updateStep(idx, { duration: e.target.value ? Number(e.target.value) : undefined })} />
+                          </label>
+                          {step.action === 'pointAt' && (
+                            <label className={`tour-toggle tour-toggle-inline${step.walkTo ? ' tour-toggle-on' : ''}`}>
+                              <span className="toggle-track" />
+                              <span>Walk To</span>
+                              <input type="checkbox" hidden checked={!!step.walkTo}
+                                disabled={assistant.isTourActive}
+                                onChange={(e) => updateStep(idx, { walkTo: e.target.checked || undefined })} />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className="ctrl-btn tour-add-step" disabled={assistant.isTourActive} onClick={addStep}>
+                    + Add Step
+                  </button>
+                </div>
+              )}
+              {popupView === 'json' && (
+                <textarea
+                  className="tour-json-editor tour-json-editor-popup"
+                  value={tourJson}
+                  onChange={(e) => {
+                    setTourJson(e.target.value);
+                    setTourJsonError('');
+                  }}
+                  spellCheck={false}
+                  disabled={assistant.isTourActive}
+                  aria-label="Tour JSON configuration"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

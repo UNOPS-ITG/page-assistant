@@ -407,6 +407,19 @@ export function CharacterModel({
         return (v.x * 0.5 + 0.5) * rect.width + rect.left;
       },
 
+      getHeadScreenPosition() {
+        if (!groupRef.current) return null;
+        const v = new THREE.Vector3();
+        groupRef.current.getWorldPosition(v);
+        v.y += characterRef.current.modelHeight;
+        v.project(camera);
+        const rect = gl.domElement.getBoundingClientRect();
+        return {
+          x: (v.x * 0.5 + 0.5) * rect.width + rect.left,
+          y: (-(v.y * 0.5) + 0.5) * rect.height + rect.top,
+        };
+      },
+
       getClipDuration(state: AssistantState) {
         const clipName = assistantStateToClip(state);
         const action = actionsRef.current[clipName];
