@@ -359,8 +359,9 @@ export function PageAssistantProvider({
       const isAutoSpeak = step.autoSpeak ?? config.autoSpeak ?? false;
 
       const hasText = Boolean(step.popover?.title || step.popover?.description);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-      if (hasText && (shouldShowBubble || !isSpeechEnabled)) {
+      if (hasText && (shouldShowBubble || !isSpeechEnabled) && !(isMobile && isAutoSpeak)) {
         setBubbleData({
           title: step.popover?.title,
           description: step.popover?.description,
