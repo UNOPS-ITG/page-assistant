@@ -1,6 +1,6 @@
-import type { Object3D, AnimationAction, Bone } from 'three';
+import type { Object3D, AnimationAction, Bone, Quaternion } from 'three';
 
-export type AssistantState = 'idle' | 'walking' | 'pointing' | 'waving' | 'talking' | 'dancing' | 'hidden';
+export type AssistantState = 'idle' | 'walking' | 'pointing' | 'pointingAt' | 'waving' | 'talking' | 'dancing' | 'hidden';
 
 export interface WalkOptions {
   speed?: number;
@@ -12,11 +12,30 @@ export interface GestureOptions {
   returnToIdle?: boolean;
 }
 
+export interface PointAtOptions extends GestureOptions {
+  walkTo?: boolean;
+}
+
+export interface PointAtTarget {
+  worldX: number;
+  worldY: number;
+  worldZ: number;
+  arm: 'left' | 'right';
+}
+
+export interface ArmRestData {
+  leftArmRestQuat: Quaternion;
+  rightArmRestQuat: Quaternion;
+  leftForearmRestQuat: Quaternion;
+  rightForearmRestQuat: Quaternion;
+}
+
 export interface PageAssistantAPI {
   walkTo(targetElement: HTMLElement | string, options?: WalkOptions): Promise<void>;
   walkToPosition(screenX: number, screenY: number, options?: WalkOptions): Promise<void>;
   setPosition(screenX: number, screenY: number): void;
   point(options?: GestureOptions): Promise<void>;
+  pointAt(target: HTMLElement | string | { x: number; y: number }, options?: PointAtOptions): Promise<void>;
   wave(options?: GestureOptions): Promise<void>;
   talk(options?: GestureOptions): Promise<void>;
   dance(options?: GestureOptions): Promise<void>;
@@ -26,11 +45,14 @@ export interface PageAssistantAPI {
   straightenUp(): void;
   lookAt(targetElement: HTMLElement | string): void;
   lookAtCursor(): void;
+  followCursorWithArms(): void;
+  stopFollowingCursorWithArms(): void;
   lookForward(): void;
   show(): void;
   hide(): void;
   isVisible: boolean;
   isFollowingCursor: boolean;
+  isFollowingWithArms: boolean;
   currentState: AssistantState;
   onStateChange: (callback: (state: AssistantState) => void) => () => void;
   onClick: (callback: () => void) => () => void;
@@ -59,6 +81,8 @@ export interface AssistantController {
   getClipDuration(state: AssistantState): number;
   cancelCurrentAction(): void;
   setWalkFacing(angle: number): void;
+  setPointAtTarget(viewportX: number, viewportY: number, arm: 'left' | 'right'): void;
+  clearPointAtTarget(): void;
 }
 
 export interface BoneRefs {

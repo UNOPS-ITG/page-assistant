@@ -14,9 +14,10 @@ import type {
   AssistantState,
   GestureOptions,
   PageAssistantAPI,
+  PointAtOptions,
   WalkOptions,
 } from './types';
-import { CHARACTERS, DEFAULT_CHARACTER_ID, type CharacterDefinition } from './constants';
+import { CHARACTERS, DEFAULT_CHARACTER_ID, ROTATION_LIMITS, type CharacterDefinition } from './constants';
 
 const PageAssistantContext = createContext<PageAssistantAPI | null>(null);
 
@@ -60,6 +61,15 @@ function getSectionLeftStandPoint(el: HTMLElement): { x: number; y: number } {
     x: rect.left / 2,
     y: rect.top,
   };
+}
+
+function resolvePointAtCoords(target: HTMLElement | string | { x: number; y: number }): { x: number; y: number } | null {
+  if (typeof target === 'string' || target instanceof HTMLElement) {
+    const el = resolveElement(target);
+    if (!el) return null;
+    return getElementCenter(el);
+  }
+  return target;
 }
 
 function smoothScrollTo(el: HTMLElement, scrollSpeed: number): Promise<void> {
@@ -109,6 +119,33 @@ function smoothScrollTo(el: HTMLElement, scrollSpeed: number): Promise<void> {
 
 const SCROLL_SPEED_PX_PER_FRAME = 8;
 const DEFAULT_GESTURE_MS = 2500;
+const ARM_SWITCH_HYSTERESIS = 40;
+
+function computeArmAndTurn(
+  targetX: number,
+  charScreenX: number,
+  currentArm?: 'left' | 'right',
+): { arm: 'left' | 'right'; turnAngle: number } {
+  const dx = targetX - charScreenX;
+
+  let arm: 'left' | 'right';
+  if (currentArm) {
+    const threshold = ARM_SWITCH_HYSTERESIS;
+    if (currentArm === 'right' && dx < -threshold) arm = 'left';
+    else if (currentArm === 'left' && dx > threshold) arm = 'right';
+    else arm = currentArm;
+  } else {
+    arm = dx >= 0 ? 'right' : 'left';
+  }
+
+  const armSign = arm === 'right' ? 1 : -1;
+  const maxDx = Math.max(window.innerWidth * 0.35, 1);
+  const ratio = Math.min(1, Math.abs(dx) / maxDx);
+  const proportionalTurn = ratio * ROTATION_LIMITS.MAX_POINT_AT_TURN;
+  const turnAngle = armSign * Math.max(proportionalTurn, ROTATION_LIMITS.MIN_POINT_AT_TURN);
+
+  return { arm, turnAngle };
+}
 
 export function PageAssistantProvider({
   children,
@@ -134,7 +171,10 @@ export function PageAssistantProvider({
   const hoverCallbacks = useRef(new Set<(hovering: boolean) => void>());
   const gestureTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [isFollowingCursor, setIsFollowingCursor] = useState(false);
+  const [isFollowingWithArms, setIsFollowingWithArms] = useState(false);
   const followCursorRef = useRef(false);
+  const followWithArmsRef = useRef(false);
+  const currentFollowArmRef = useRef<'left' | 'right'>('right');
   const walkingToClickRef = useRef(false);
 
   useEffect(() => {
@@ -190,6 +230,30 @@ export function PageAssistantProvider({
     document.addEventListener('click', onClick);
     return () => document.removeEventListener('click', onClick);
   }, [isLoaded, isVisible]);
+
+  useEffect(() => {
+    if (!isFollowingWithArms) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!followWithArmsRef.current) return;
+      const charX = controllerRef.current?.getCharacterScreenX() ?? 0;
+      const { arm, turnAngle } = computeArmAndTurn(
+        e.clientX, charX, currentFollowArmRef.current,
+      );
+      currentFollowArmRef.current = arm;
+      controllerRef.current?.setTargetRotationY(turnAngle);
+      controllerRef.current?.setPointAtTarget(e.clientX, e.clientY, arm);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    return () => document.removeEventListener('mousemove', onMouseMove);
+  }, [isFollowingWithArms]);
+
+  useEffect(() => {
+    if (isFollowingWithArms && currentState === 'idle') {
+      controllerRef.current?.transitionTo('pointingAt');
+    }
+  }, [isFollowingWithArms, currentState]);
 
   const handleStateChange = useCallback((state: AssistantState) => {
     setCurrentState(state);
@@ -260,6 +324,58 @@ export function PageAssistantProvider({
         scheduleReturnToIdle(options);
       },
 
+      pointAt: async (target, options?: PointAtOptions) => {
+        clearGestureTimeouts();
+
+        const coords = resolvePointAtCoords(target);
+        if (!coords) return;
+
+        const charScreenX = controllerRef.current?.getCharacterScreenX() ?? 0;
+        const { arm } = computeArmAndTurn(coords.x, charScreenX);
+
+        if (options?.walkTo) {
+          if (typeof target === 'string' || target instanceof HTMLElement) {
+            const el = resolveElement(target);
+            if (el) {
+              const viewportW = window.innerWidth;
+              const centerX = viewportW / 2;
+              await controllerRef.current?.walkToScreenX(centerX);
+
+              const elRect = el.getBoundingClientRect();
+              const scrollingUp = elRect.top < 0;
+              controllerRef.current?.setWalkFacing(scrollingUp ? Math.PI : 0);
+              controllerRef.current?.transitionTo('walking');
+              await smoothScrollTo(el, SCROLL_SPEED_PX_PER_FRAME);
+
+              const standPoint = getSectionLeftStandPoint(el);
+              await controllerRef.current?.walkToScreenHeadAt(standPoint.x, standPoint.y);
+            }
+          } else {
+            const offsetX = arm === 'right' ? -200 : 200;
+            await controllerRef.current?.walkToScreen(coords.x + offsetX, coords.y);
+          }
+        }
+
+        const freshCoords = resolvePointAtCoords(target) ?? coords;
+        const freshCharScreenX = controllerRef.current?.getCharacterScreenX() ?? 0;
+        const result = computeArmAndTurn(freshCoords.x, freshCharScreenX);
+
+        controllerRef.current?.setTargetRotationY(result.turnAngle);
+        controllerRef.current?.setPointAtTarget(freshCoords.x, freshCoords.y, result.arm);
+        controllerRef.current?.transitionTo('pointingAt');
+
+        if (options?.returnToIdle !== false) {
+          const ms = options?.duration ?? DEFAULT_GESTURE_MS;
+          const id = setTimeout(() => {
+            controllerRef.current?.clearPointAtTarget();
+            controllerRef.current?.setTargetRotationY(0);
+            controllerRef.current?.transitionTo('idle');
+            gestureTimeoutsRef.current = gestureTimeoutsRef.current.filter((t) => t !== id);
+          }, ms);
+          gestureTimeoutsRef.current.push(id);
+        }
+      },
+
       wave: async (options?: GestureOptions) => {
         clearGestureTimeouts();
         controllerRef.current?.transitionTo('waving');
@@ -320,9 +436,34 @@ export function PageAssistantProvider({
         controllerRef.current?.setLookTarget({ mode: 'cursor' });
       },
 
+      followCursorWithArms: () => {
+        clearGestureTimeouts();
+        followWithArmsRef.current = true;
+        followCursorRef.current = true;
+        setIsFollowingWithArms(true);
+        setIsFollowingCursor(true);
+        controllerRef.current?.setLookTarget({ mode: 'cursor' });
+        controllerRef.current?.transitionTo('pointingAt');
+      },
+
+      stopFollowingCursorWithArms: () => {
+        followWithArmsRef.current = false;
+        setIsFollowingWithArms(false);
+        controllerRef.current?.clearPointAtTarget();
+        controllerRef.current?.setTargetRotationY(0);
+        controllerRef.current?.transitionTo('idle');
+      },
+
       lookForward: () => {
         followCursorRef.current = false;
         setIsFollowingCursor(false);
+        if (followWithArmsRef.current) {
+          followWithArmsRef.current = false;
+          setIsFollowingWithArms(false);
+          controllerRef.current?.clearPointAtTarget();
+          controllerRef.current?.setTargetRotationY(0);
+          controllerRef.current?.transitionTo('idle');
+        }
         controllerRef.current?.setLookTarget({ mode: 'forward' });
       },
 
@@ -338,6 +479,7 @@ export function PageAssistantProvider({
 
       isVisible,
       isFollowingCursor,
+      isFollowingWithArms,
       currentState,
 
       onStateChange: (cb) => {
@@ -361,7 +503,7 @@ export function PageAssistantProvider({
         };
       },
     };
-  }, [clearGestureTimeouts, currentState, isFollowingCursor, isVisible, scheduleReturnToIdle]);
+  }, [clearGestureTimeouts, currentState, isFollowingCursor, isFollowingWithArms, isVisible, scheduleReturnToIdle]);
 
   return (
     <PageAssistantContext.Provider value={api}>

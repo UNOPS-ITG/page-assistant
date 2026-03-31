@@ -12,7 +12,7 @@ import {
   ONE_SHOT_CLIPS,
   type CharacterDefinition,
 } from './constants';
-import type { AssistantController, AssistantState, BoneRefs, LookTarget } from './types';
+import type { ArmRestData, AssistantController, AssistantState, BoneRefs, LookTarget, PointAtTarget } from './types';
 import { useCursorTracking } from './useCursorTracking';
 import { useScreenToWorld } from './useScreenToWorld';
 import { BoneOverrideController } from './BoneOverrideController';
@@ -105,6 +105,8 @@ function assistantStateToClip(state: AssistantState): string {
       return CLIP_NAMES.WALK;
     case 'pointing':
       return CLIP_NAMES.POINT;
+    case 'pointingAt':
+      return CLIP_NAMES.IDLE;
     case 'waving':
       return CLIP_NAMES.WAVE;
     case 'talking':
@@ -115,6 +117,17 @@ function assistantStateToClip(state: AssistantState): string {
     default:
       return CLIP_NAMES.IDLE;
   }
+}
+
+function computeArmRestData(bones: BoneRefs): ArmRestData {
+  const defaultQuat = new THREE.Quaternion();
+
+  return {
+    leftArmRestQuat: bones.leftArm?.quaternion.clone() ?? defaultQuat.clone(),
+    rightArmRestQuat: bones.rightArm?.quaternion.clone() ?? defaultQuat.clone(),
+    leftForearmRestQuat: bones.leftForeArm?.quaternion.clone() ?? defaultQuat.clone(),
+    rightForearmRestQuat: bones.rightForeArm?.quaternion.clone() ?? defaultQuat.clone(),
+  };
 }
 
 interface CharacterModelProps {
@@ -147,6 +160,7 @@ export function CharacterModel({
   const walkResolveRef = useRef<(() => void) | null>(null);
   const oneShotResolveRef = useRef<(() => void) | null>(null);
   const targetRotationYRef = useRef<number | null>(null);
+  const pointAtTargetRef = useRef<PointAtTarget | null>(null);
 
   const lightRef = useRef<THREE.DirectionalLight>(null);
   const lightConfigured = useRef(false);
@@ -188,7 +202,7 @@ export function CharacterModel({
   const actualModelHeightRef = useRef(actualModelHeight);
   actualModelHeightRef.current = actualModelHeight;
 
-  const { mixer, actionsMap, boneRefs } = useMemo(() => {
+  const { mixer, actionsMap, boneRefs, armRestData } = useMemo(() => {
     const mixerInstance = new THREE.AnimationMixer(baseModel);
     const actions: Record<string, THREE.AnimationAction> = {};
 
@@ -211,6 +225,11 @@ export function CharacterModel({
       actions[clipName] = action;
     }
 
+    const bones = collectBoneRefs(baseModel);
+
+    baseModel.updateMatrixWorld(true);
+    const armRest = computeArmRestData(bones);
+
     const idleAction = actions[CLIP_NAMES.IDLE];
     if (idleAction) {
       idleAction.reset();
@@ -220,7 +239,8 @@ export function CharacterModel({
     return {
       mixer: mixerInstance,
       actionsMap: actions,
-      boneRefs: collectBoneRefs(baseModel),
+      boneRefs: bones,
+      armRestData: armRest,
     };
   }, [baseModel, loadedMeshes]);
 
@@ -237,12 +257,18 @@ export function CharacterModel({
   const boneRefsRef = useRef(boneRefs);
   boneRefsRef.current = boneRefs;
 
+  const armRestDataRef = useRef(armRestData);
+  armRestDataRef.current = armRestData;
+
   const transitionToClip = useCallback(
     (clipName: string, crossfadeDuration = ANIMATION_CONFIG.CROSSFADE_DURATION) => {
       const next = actionsRef.current[clipName];
       if (!next) return;
 
       const prev = currentActionRef.current;
+      if (prev === next && next.isRunning()) {
+        return;
+      }
       next.reset();
       if (prev && prev !== next) {
         next.crossFadeFrom(prev, crossfadeDuration, true);
@@ -405,6 +431,20 @@ export function CharacterModel({
       setWalkFacing(angle: number) {
         walkFacingRef.current = angle;
       },
+
+      setPointAtTarget(viewportX: number, viewportY: number, arm: 'left' | 'right') {
+        const worldPos = viewportToWorldRef.current(viewportX, viewportY, 0);
+        pointAtTargetRef.current = {
+          worldX: worldPos.x,
+          worldY: worldPos.y,
+          worldZ: worldPos.z,
+          arm,
+        };
+      },
+
+      clearPointAtTarget() {
+        pointAtTargetRef.current = null;
+      },
     };
 
     controllerRef.current = controller;
@@ -534,7 +574,7 @@ export function CharacterModel({
         ground.position.set(group.position.x, group.position.y, 0);
       }
     }
-  }, 0);
+  }, -1);
 
   return (
     <>
@@ -555,6 +595,8 @@ export function CharacterModel({
           currentState={stateRef}
           cursorTracking={cursorRef}
           groupRef={groupRef}
+          pointAtTarget={pointAtTargetRef}
+          armRestData={armRestDataRef}
         />
       </group>
       <directionalLight

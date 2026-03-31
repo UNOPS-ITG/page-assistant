@@ -1,7 +1,8 @@
+import { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ANIMATION_CONFIG, ROTATION_LIMITS } from './constants';
-import type { AssistantState, BoneRefs, LookTarget } from './types';
+import type { ArmRestData, AssistantState, BoneRefs, LookTarget, PointAtTarget } from './types';
 
 interface BoneOverrideControllerProps {
   boneRefs: React.RefObject<BoneRefs>;
@@ -9,10 +10,103 @@ interface BoneOverrideControllerProps {
   currentState: React.RefObject<AssistantState>;
   cursorTracking: React.RefObject<{ ndcX: number; ndcY: number; screenX: number; screenY: number }>;
   groupRef: React.RefObject<THREE.Group | null>;
+  pointAtTarget: React.RefObject<PointAtTarget | null>;
+  armRestData: React.RefObject<ArmRestData>;
 }
 
 const _eye = new THREE.Vector3();
 const _charNdc = new THREE.Vector3();
+
+const _shoulderPos = new THREE.Vector3();
+const _elbowPos = new THREE.Vector3();
+const _desiredDir = new THREE.Vector3();
+const _currentDir = new THREE.Vector3();
+const _armWorldQuat = new THREE.Quaternion();
+const _desiredWorldQuat = new THREE.Quaternion();
+const _parentWorldQuat = new THREE.Quaternion();
+const _aimRotation = new THREE.Quaternion();
+const _savedArmQuat = new THREE.Quaternion();
+const _savedForearmQuat = new THREE.Quaternion();
+const _clampAxis = new THREE.Vector3();
+const _postShoulderPos = new THREE.Vector3();
+const _postElbowPos = new THREE.Vector3();
+const _postArmDir = new THREE.Vector3();
+const _correctedDir = new THREE.Vector3();
+const _correctionRot = new THREE.Quaternion();
+
+const MIN_CROSS_BODY_DOT = 0.3;
+
+function computeArmIK(
+  armBone: THREE.Bone | null,
+  forearmBone: THREE.Bone | null,
+  armRestQuat: THREE.Quaternion,
+  forearmRestQuat: THREE.Quaternion,
+  target: { worldX: number; worldY: number; worldZ: number },
+  outAimQuat: THREE.Quaternion,
+  isRightArm: boolean,
+  bodyRotationY: number,
+): boolean {
+  if (!armBone?.parent || !forearmBone) return false;
+
+  _savedArmQuat.copy(armBone.quaternion);
+  _savedForearmQuat.copy(forearmBone.quaternion);
+
+  armBone.quaternion.copy(armRestQuat);
+  forearmBone.quaternion.copy(forearmRestQuat);
+  armBone.updateWorldMatrix(true, false);
+  forearmBone.updateWorldMatrix(true, false);
+
+  armBone.getWorldPosition(_shoulderPos);
+  forearmBone.getWorldPosition(_elbowPos);
+
+  _currentDir.copy(_elbowPos).sub(_shoulderPos);
+  _desiredDir.set(target.worldX, target.worldY, target.worldZ).sub(_shoulderPos);
+
+  const valid = _currentDir.lengthSq() > 0.0001 && _desiredDir.lengthSq() > 0.0001;
+  if (valid) {
+    _currentDir.normalize();
+    _desiredDir.normalize();
+
+    const localPlusX_X = Math.cos(bodyRotationY);
+    const localPlusX_Z = -Math.sin(bodyRotationY);
+    const outX = isRightArm ? -localPlusX_X : localPlusX_X;
+    const outZ = isRightArm ? -localPlusX_Z : localPlusX_Z;
+    const outDot = _desiredDir.x * outX + _desiredDir.z * outZ;
+
+    if (outDot < MIN_CROSS_BODY_DOT) {
+      _desiredDir.x += (MIN_CROSS_BODY_DOT - outDot) * outX;
+      _desiredDir.z += (MIN_CROSS_BODY_DOT - outDot) * outZ;
+      if (_desiredDir.lengthSq() < 0.0001) {
+        armBone.quaternion.copy(_savedArmQuat);
+        forearmBone.quaternion.copy(_savedForearmQuat);
+        return false;
+      }
+      _desiredDir.normalize();
+    }
+
+    const ikAngle = _currentDir.angleTo(_desiredDir);
+    if (ikAngle > ROTATION_LIMITS.MAX_ARM_IK_ANGLE) {
+      _clampAxis.crossVectors(_currentDir, _desiredDir);
+      if (_clampAxis.lengthSq() > 0.0001) {
+        _clampAxis.normalize();
+        _desiredDir.copy(_currentDir).applyAxisAngle(_clampAxis, ROTATION_LIMITS.MAX_ARM_IK_ANGLE);
+      }
+    }
+
+    _aimRotation.setFromUnitVectors(_currentDir, _desiredDir);
+
+    armBone.getWorldQuaternion(_armWorldQuat);
+    _desiredWorldQuat.copy(_aimRotation).multiply(_armWorldQuat);
+
+    armBone.parent.getWorldQuaternion(_parentWorldQuat);
+    outAimQuat.copy(_parentWorldQuat).invert().multiply(_desiredWorldQuat);
+  }
+
+  armBone.quaternion.copy(_savedArmQuat);
+  forearmBone.quaternion.copy(_savedForearmQuat);
+
+  return valid;
+}
 
 function applyLookRotation(
   bone: THREE.Bone | null,
@@ -25,16 +119,72 @@ function applyLookRotation(
   bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, targetX, lerpFactor);
 }
 
+const ARM_SIDE_BASE_DOT = 0.12;
+const ARM_SIDE_DOWN_DOT = 0.30;
+const _enfWorldQuat = new THREE.Quaternion();
+const _enfParentInv = new THREE.Quaternion();
+
+function enforceArmSide(
+  armBone: THREE.Bone | null,
+  forearmBone: THREE.Bone | null,
+  isRightArm: boolean,
+  localPlusX_X: number,
+  localPlusX_Z: number,
+) {
+  if (!armBone || !forearmBone) return;
+
+  armBone.updateWorldMatrix(true, false);
+  forearmBone.updateWorldMatrix(true, false);
+  armBone.getWorldPosition(_postShoulderPos);
+  forearmBone.getWorldPosition(_postElbowPos);
+  _postArmDir.subVectors(_postElbowPos, _postShoulderPos);
+  if (_postArmDir.lengthSq() < 0.0001) return;
+  _postArmDir.normalize();
+
+  const outX = isRightArm ? -localPlusX_X : localPlusX_X;
+  const outZ = isRightArm ? -localPlusX_Z : localPlusX_Z;
+
+  const downwardness = Math.max(0, -_postArmDir.y);
+  const threshold = ARM_SIDE_BASE_DOT + ARM_SIDE_DOWN_DOT * downwardness;
+
+  const outDot = _postArmDir.x * outX + _postArmDir.z * outZ;
+  if (outDot >= threshold) return;
+
+  _correctedDir.copy(_postArmDir);
+  _correctedDir.x += (threshold - outDot) * outX;
+  _correctedDir.z += (threshold - outDot) * outZ;
+  if (_correctedDir.lengthSq() < 0.0001) return;
+  _correctedDir.normalize();
+
+  _correctionRot.setFromUnitVectors(_postArmDir, _correctedDir);
+
+  armBone.getWorldQuaternion(_enfWorldQuat);
+  _correctionRot.multiply(_enfWorldQuat);
+
+  _enfParentInv.identity();
+  if (armBone.parent) {
+    armBone.parent.getWorldQuaternion(_enfParentInv);
+    _enfParentInv.invert();
+  }
+  armBone.quaternion.copy(_enfParentInv.multiply(_correctionRot));
+}
+
 export function BoneOverrideController({
   boneRefs,
   lookTarget,
   currentState,
   cursorTracking,
   groupRef,
+  pointAtTarget,
+  armRestData,
 }: BoneOverrideControllerProps) {
   const { camera, gl } = useThree();
+  const leftBlendRef = useRef(0);
+  const rightBlendRef = useRef(0);
+  const leftAimRef = useRef(new THREE.Quaternion());
+  const rightAimRef = useRef(new THREE.Quaternion());
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const bones = boneRefs.current;
     if (!bones) return;
 
@@ -83,6 +233,56 @@ export function BoneOverrideController({
       headX * ROTATION_LIMITS.SPINE_FACTOR,
       lf,
     );
+
+    // --- Procedural arm pointing override ---
+    const pointAt = pointAtTarget.current;
+    const restData = armRestData.current;
+    const isPointingAt = state === 'pointingAt';
+    const wantLeft = isPointingAt && pointAt?.arm === 'left';
+    const wantRight = isPointingAt && pointAt?.arm === 'right';
+
+    const inSpeed = ROTATION_LIMITS.ARM_BLEND_SPEED;
+    const outSpeed = ROTATION_LIMITS.ARM_BLEND_SPEED * 1.5;
+
+    leftBlendRef.current += ((wantLeft ? 1 : 0) - leftBlendRef.current)
+      * (1 - Math.exp(-(wantLeft ? inSpeed : outSpeed) * delta));
+    rightBlendRef.current += ((wantRight ? 1 : 0) - rightBlendRef.current)
+      * (1 - Math.exp(-(wantRight ? inSpeed : outSpeed) * delta));
+
+    leftBlendRef.current = THREE.MathUtils.clamp(leftBlendRef.current, 0, 1);
+    rightBlendRef.current = THREE.MathUtils.clamp(rightBlendRef.current, 0, 1);
+
+    const bodyRotY = groupRef.current?.rotation.y ?? 0;
+    const localPlusX_X = Math.cos(bodyRotY);
+    const localPlusX_Z = -Math.sin(bodyRotY);
+
+    if (pointAt && restData) {
+      if (pointAt.arm === 'left') {
+        computeArmIK(
+          bones.leftArm, bones.leftForeArm,
+          restData.leftArmRestQuat, restData.leftForearmRestQuat,
+          pointAt, leftAimRef.current, false, bodyRotY,
+        );
+      } else {
+        computeArmIK(
+          bones.rightArm, bones.rightForeArm,
+          restData.rightArmRestQuat, restData.rightForearmRestQuat,
+          pointAt, rightAimRef.current, true, bodyRotY,
+        );
+      }
+    }
+
+    if (leftBlendRef.current > 0.001 && restData) {
+      bones.leftArm?.quaternion.slerp(leftAimRef.current, leftBlendRef.current);
+      bones.leftForeArm?.quaternion.slerp(restData.leftForearmRestQuat, leftBlendRef.current);
+      enforceArmSide(bones.leftArm, bones.leftForeArm, false, localPlusX_X, localPlusX_Z);
+    }
+
+    if (rightBlendRef.current > 0.001 && restData) {
+      bones.rightArm?.quaternion.slerp(rightAimRef.current, rightBlendRef.current);
+      bones.rightForeArm?.quaternion.slerp(restData.rightForearmRestQuat, rightBlendRef.current);
+      enforceArmSide(bones.rightArm, bones.rightForeArm, true, localPlusX_X, localPlusX_Z);
+    }
   });
 
   return null;

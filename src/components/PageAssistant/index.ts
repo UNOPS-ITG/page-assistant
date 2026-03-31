@@ -4,6 +4,7 @@ export type {
   AssistantState,
   WalkOptions,
   GestureOptions,
+  PointAtOptions,
   AssistantCanvasProps,
 } from './types';
 export { CHARACTERS, DEFAULT_CHARACTER_ID } from './constants';

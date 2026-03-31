@@ -299,6 +299,18 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
             <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.point({ duration: 2500 }))}>
               Point
             </button>
+            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#features', { duration: 3000 }))}>
+              Point At Features
+            </button>
+            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#pricing', { duration: 3000 }))}>
+              Point At Pricing
+            </button>
+            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#features', { walkTo: true, duration: 3000 }))}>
+              Walk &amp; Point Features
+            </button>
+            <button type="button" className="ctrl-btn" onClick={() => run(() => assistant.pointAt('#pricing', { walkTo: true, duration: 3000 }))}>
+              Walk &amp; Point Pricing
+            </button>
             <button type="button" className="ctrl-btn" onClick={() => assistant.turnLeft()}>
               Turn Left
             </button>
@@ -315,6 +327,16 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                 type="checkbox"
                 checked={assistant.isFollowingCursor}
                 onChange={() => assistant.isFollowingCursor ? assistant.lookForward() : assistant.lookAtCursor()}
+                hidden
+              />
+            </label>
+            <label className={`toggle-switch${assistant.isFollowingWithArms ? ' toggle-switch-on' : ''}`}>
+              <span className="toggle-track" />
+              <span>Follow with Arms</span>
+              <input
+                type="checkbox"
+                checked={assistant.isFollowingWithArms}
+                onChange={() => assistant.isFollowingWithArms ? assistant.stopFollowingCursorWithArms() : assistant.followCursorWithArms()}
                 hidden
               />
             </label>

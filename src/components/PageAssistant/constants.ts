@@ -16,6 +16,10 @@ export const ROTATION_LIMITS = {
   HEAD_TILT: 0.5,
   NECK_FACTOR: 0.6,
   SPINE_FACTOR: 0.3,
+  ARM_BLEND_SPEED: 8,
+  MAX_POINT_AT_TURN: Math.PI / 2,
+  MIN_POINT_AT_TURN: Math.PI / 4,
+  MAX_ARM_IK_ANGLE: Math.PI * 0.42,
 } as const;
 
 export const ANIMATION_CONFIG = {
