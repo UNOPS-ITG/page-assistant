@@ -1,6 +1,6 @@
 {
   "name": "@unopsitg/page-assistant-core",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Shared types, constants, and utilities for the Page Assistant ecosystem",
   "license": "MIT",
   "repository": {
@@ -8,7 +8,7 @@
     "url": "https://github.com/tushardighe-builder/page-assistant.git",
     "directory": "packages/core"
   },
-  "homepage": "https://github.com/tushardighe-builder/page-assistant#readme",
+  "homepage": "https://pagecompanion.web.app/",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
