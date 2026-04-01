@@ -123,6 +123,7 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
   const assistant = usePageAssistant();
   const [state, setState] = useState(assistant.currentState);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [controlTab, setControlTab] = useState<ControlTab>('actions');
 
   const activeCharacter = CHARACTERS[characterId];
@@ -460,7 +461,7 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
       )}
 
       <div
-        className={`control-panel${mobileActionsOpen ? ' control-panel-expanded' : ''}`}
+        className={`control-panel${mobileActionsOpen ? ' control-panel-expanded' : ''}${desktopCollapsed ? ' control-panel-desktop-collapsed' : ''}`}
         role="region"
         aria-label="Assistant controls"
       >
@@ -500,6 +501,17 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
               <button type="button" className={`control-tab${controlTab === 'tour' ? ' control-tab-active' : ''}`}
                 onClick={() => setControlTab('tour')}>Tour</button>
             </div>
+            <button
+              type="button"
+              className="desktop-collapse-trigger"
+              onClick={() => setDesktopCollapsed(!desktopCollapsed)}
+              aria-expanded={!desktopCollapsed}
+              aria-label={desktopCollapsed ? 'Expand panel' : 'Collapse panel'}
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden>
+                <path d={desktopCollapsed ? 'M6 8l4 4 4-4' : 'M6 12l4-4 4 4'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
             <button
               type="button"
               className="mobile-expand-trigger"

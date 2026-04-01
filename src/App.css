@@ -651,6 +651,34 @@ main {
   color: var(--text-primary);
 }
 
+/* --- Desktop collapse trigger --- */
+
+.desktop-collapse-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  margin-left: auto;
+  border-radius: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.desktop-collapse-trigger:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.control-panel-desktop-collapsed .control-panel-body {
+  display: none;
+}
+
 /* --- Mobile expand trigger --- */
 
 .mobile-expand-trigger {
@@ -1495,6 +1523,10 @@ main {
 }
 
 @media (max-width: 768px) {
+  .desktop-collapse-trigger {
+    display: none;
+  }
+
   .nav-inner {
     gap: 1rem;
     padding: 0.75rem 1rem;
