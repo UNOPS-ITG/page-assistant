@@ -444,7 +444,7 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
               </article>
             </div>
             <p className="pricing-cta">
-              Everything you see on this page is powered by open-source npm packages. Install them and add {characterName} to your own site today:
+              Everything you see on this page is powered by ouropen-source npm packages. Install them and add {characterName} to your own site today:
               {' '}<a href="https://www.npmjs.com/package/@unopsitg/page-assistant-react" target="_blank" rel="noopener">React</a>
               {' · '}<a href="https://www.npmjs.com/package/@unopsitg/page-assistant-web-component" target="_blank" rel="noopener">Web Component</a>
               {' · '}<a href="https://www.npmjs.com/package/@unopsitg/page-assistant-core" target="_blank" rel="noopener">Core</a>
