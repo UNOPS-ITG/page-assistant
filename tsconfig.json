@@ -14,6 +14,14 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Workspace paths */
+    "baseUrl": ".",
+    "paths": {
+      "@unopsitg/page-assistant-core": ["./packages/core/src/index.ts"],
+      "@unopsitg/page-assistant-react": ["./packages/react/src/index.ts"],
+      "@unopsitg/page-assistant-web-component": ["./packages/web-component/src/index.ts"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

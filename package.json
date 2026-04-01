@@ -3,9 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": ["packages/*"],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:core": "npm -w @unopsitg/page-assistant-core run build",
+    "build:react": "npm -w @unopsitg/page-assistant-react run build",
+    "build:wc": "npm -w @unopsitg/page-assistant-web-component run build",
+    "build:packages": "npm run build:core && npm run build:react && npm run build:wc",
     "preview": "vite preview",
     "convert-model": "tsx scripts/convert-mixamo.ts"
   },
@@ -23,7 +28,6 @@
     "vite": "^8.0.1"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@types/three": "^0.183.1",
     "meshoptimizer": "^0.22.0",

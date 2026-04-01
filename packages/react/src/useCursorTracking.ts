@@ -1,11 +1,5 @@
 import { useEffect, useRef } from 'react';
-
-export interface CursorPosition {
-  ndcX: number;
-  ndcY: number;
-  screenX: number;
-  screenY: number;
-}
+import type { CursorPosition } from '@unopsitg/page-assistant-core';
 
 const DEFAULT_POSITION: CursorPosition = {
   ndcX: 0,

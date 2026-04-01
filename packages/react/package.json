@@ -1,0 +1,29 @@
+{
+  "name": "@unopsitg/page-assistant-react",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@unopsitg/page-assistant-core": "^0.1.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18",
+    "three": ">=0.150",
+    "@react-three/fiber": ">=9",
+    "meshoptimizer": ">=0.20"
+  },
+  "files": ["dist", "README.md"]
+}

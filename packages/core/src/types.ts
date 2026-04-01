@@ -1,5 +1,3 @@
-import type { Object3D, AnimationAction, Bone, Quaternion } from 'three';
-
 export type AssistantState = 'idle' | 'walking' | 'pointing' | 'pointingAt' | 'waving' | 'talking' | 'dancing' | 'hidden';
 
 export interface WalkOptions {
@@ -22,15 +20,6 @@ export interface PointAtTarget {
   worldZ: number;
   arm: 'left' | 'right';
 }
-
-export interface ArmRestData {
-  leftArmRestQuat: Quaternion;
-  rightArmRestQuat: Quaternion;
-  leftForearmRestQuat: Quaternion;
-  rightForearmRestQuat: Quaternion;
-}
-
-// --- Tour types (driver.js-inspired) ---
 
 export type TourStepAction = 'walkTo' | 'pointAt' | 'wave' | 'talk' | 'dance' | 'idle';
 
@@ -66,8 +55,6 @@ export interface TourConfig {
   onDestroyed?: () => void;
 }
 
-// --- Voice preference (portable across devices) ---
-
 export type VoiceQuality = 'neural' | 'online' | 'any';
 
 export interface VoicePreference {
@@ -76,8 +63,6 @@ export interface VoicePreference {
   quality?: VoiceQuality;
   name?: string;
 }
-
-// --- Speech types ---
 
 export interface SpeechOptions {
   voice?: string | VoicePreference;
@@ -88,6 +73,47 @@ export interface SpeechBubbleData {
   description?: string;
   showPlayButton?: boolean;
   visible: boolean;
+}
+
+export type SpeechStatus = 'idle' | 'speaking' | 'paused';
+
+export interface SpeechProgress {
+  chunk: number;
+  total: number;
+}
+
+export type LookMode = 'cursor' | 'element' | 'forward';
+
+export interface LookTarget {
+  mode: LookMode;
+  ndcX?: number;
+  ndcY?: number;
+}
+
+export interface CursorPosition {
+  ndcX: number;
+  ndcY: number;
+  screenX: number;
+  screenY: number;
+}
+
+export type CharacterSex = 'male' | 'female';
+
+export interface CharacterLightingOverrides {
+  fillLightIntensity?: number;
+  directionalIntensity?: number;
+  emissiveIntensity?: number;
+}
+
+export interface CharacterDefinition {
+  id: string;
+  label: string;
+  sex: CharacterSex;
+  modelPath: string;
+  modelHeight: number;
+  modelScale: number;
+  maxArmIkAngle?: number;
+  lightingOverrides?: CharacterLightingOverrides;
 }
 
 export interface PageAssistantAPI {
@@ -133,60 +159,4 @@ export interface PageAssistantAPI {
   tourStepCount: number;
 
   getAvailableVoices(): SpeechSynthesisVoice[];
-}
-
-export type LookMode = 'cursor' | 'element' | 'forward';
-
-export interface LookTarget {
-  mode: LookMode;
-  ndcX?: number;
-  ndcY?: number;
-}
-
-export interface AssistantController {
-  walkToScreen(viewportX: number, viewportY: number): Promise<void>;
-  walkToScreenHeadAt(viewportX: number, headViewportY: number): Promise<void>;
-  walkToScreenX(viewportX: number): Promise<void>;
-  playOneShot(state: AssistantState): Promise<void>;
-  snapToViewportX(viewportX: number): void;
-  setTargetRotationY(angle: number): void;
-  transitionTo(state: AssistantState): void;
-  setLookTarget(target: LookTarget): void;
-  setCharacterWorldX(worldX: number): void;
-  getCharacterScreenX(): number;
-  getHeadScreenPosition(): { x: number; y: number } | null;
-  getClipDuration(state: AssistantState): number;
-  cancelCurrentAction(): void;
-  setWalkFacing(angle: number): void;
-  setPointAtTarget(viewportX: number, viewportY: number, arm: 'left' | 'right'): void;
-  clearPointAtTarget(): void;
-}
-
-export interface BoneRefs {
-  head: Bone | null;
-  neck: Bone | null;
-  spine: Bone | null;
-  spine1: Bone | null;
-  spine2: Bone | null;
-  hips: Bone | null;
-  jaw: Bone | null;
-  leftArm: Bone | null;
-  leftForeArm: Bone | null;
-  rightArm: Bone | null;
-  rightForeArm: Bone | null;
-}
-
-export interface AnimationActions {
-  [key: string]: AnimationAction | null;
-}
-
-export interface CharacterNodes {
-  [key: string]: Object3D;
-}
-
-export interface AssistantCanvasProps {
-  containerMode?: boolean;
-  width?: string | number;
-  height?: string | number;
-  className?: string;
 }

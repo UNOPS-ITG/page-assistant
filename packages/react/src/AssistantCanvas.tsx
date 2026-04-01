@@ -2,8 +2,9 @@ import { Suspense, useEffect, useState, type CSSProperties, type MutableRefObjec
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { CharacterModel } from './CharacterModel';
-import type { AssistantController, AssistantState } from './types';
-import { CAMERA_CONFIG, type CharacterDefinition } from './constants';
+import type { AssistantController } from './types';
+import type { AssistantState, CharacterDefinition } from '@unopsitg/page-assistant-core';
+import { CAMERA_CONFIG } from '@unopsitg/page-assistant-core';
 
 interface AssistantCanvasInternalProps {
   character: CharacterDefinition;

@@ -1,0 +1,23 @@
+{
+  "name": "@unopsitg/page-assistant-web-component",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/page-assistant.js",
+  "module": "dist/page-assistant.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/page-assistant.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@unopsitg/page-assistant-core": "^0.1.0",
+    "@unopsitg/page-assistant-react": "^0.1.0"
+  },
+  "files": ["dist", "README.md"]
+}

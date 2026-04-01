@@ -1,3 +1,5 @@
+import type { CharacterDefinition } from './types';
+
 export const BONE_NAMES = {
   HEAD: 'mixamorigHead',
   NECK: 'mixamorigNeck',
@@ -69,30 +71,6 @@ export const ONE_SHOT_CLIPS = new Set([
   CLIP_NAMES.POINT,
   CLIP_NAMES.WAVE,
 ]);
-
-export type CharacterSex = 'male' | 'female';
-
-export interface CharacterLightingOverrides {
-  /** Extra point-light intensity added inside the character group as fill. */
-  fillLightIntensity?: number;
-  /** Override the per-character directional light intensity (default 1.5). */
-  directionalIntensity?: number;
-  /** Flat emissive boost applied to every material on the mesh (0-1 range). */
-  emissiveIntensity?: number;
-}
-
-export interface CharacterDefinition {
-  id: string;
-  label: string;
-  sex: CharacterSex;
-  /** Path to the merged GLB file containing the mesh and all animation clips. */
-  modelPath: string;
-  modelHeight: number;
-  modelScale: number;
-  /** Max angle (radians) the arm IK can rotate from the idle rest pose. Defaults to ROTATION_LIMITS.MAX_ARM_IK_ANGLE. */
-  maxArmIkAngle?: number;
-  lightingOverrides?: CharacterLightingOverrides;
-}
 
 export const CHARACTERS: Record<string, CharacterDefinition> = {
   amy: {

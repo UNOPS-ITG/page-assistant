@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PageAssistantProvider, usePageAssistant } from './components/PageAssistant';
-import type { TourConfig, TourStep, TourStepAction, VoicePreference } from './components/PageAssistant';
-import { CHARACTERS, DEFAULT_CHARACTER_ID } from './components/PageAssistant/constants';
-import { voiceTag as voiceTagFn } from './components/PageAssistant/useSpeech';
+import { PageAssistantProvider, usePageAssistant } from '@unopsitg/page-assistant-react';
+import { CHARACTERS, DEFAULT_CHARACTER_ID, voiceTag as voiceTagFn } from '@unopsitg/page-assistant-core';
+import type { TourConfig, TourStep, TourStepAction, VoicePreference } from '@unopsitg/page-assistant-core';
 import './App.css';
 
 type ThemeId = 'midnight' | 'light' | 'grey';
@@ -33,7 +32,7 @@ function App() {
   }, [theme]);
 
   return (
-    <PageAssistantProvider key={characterId} characterId={characterId}>
+    <PageAssistantProvider key={characterId} characterId={characterId} stickyHeaderSelector=".site-header">
       <DemoContent
         characterId={characterId}
         onCharacterChange={setCharacterId}

@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist",
+    "outDir": "dist",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@unopsitg/page-assistant-core": ["../core/src/index.ts"],
+      "@unopsitg/page-assistant-react": ["../react/src/index.ts"]
+    },
+    "baseUrl": "."
+  },
+  "include": ["src"]
+}

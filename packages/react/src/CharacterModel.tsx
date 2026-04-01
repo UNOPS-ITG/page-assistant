@@ -14,9 +14,9 @@ import {
   CLIP_NAMES,
   ONE_SHOT_CLIPS,
   ROTATION_LIMITS,
-  type CharacterDefinition,
-} from './constants';
-import type { ArmRestData, AssistantController, AssistantState, BoneRefs, LookTarget, PointAtTarget } from './types';
+} from '@unopsitg/page-assistant-core';
+import type { AssistantState, CharacterDefinition, LookTarget, PointAtTarget } from '@unopsitg/page-assistant-core';
+import type { ArmRestData, AssistantController, BoneRefs } from './types';
 import { useCursorTracking } from './useCursorTracking';
 import { useScreenToWorld } from './useScreenToWorld';
 import { BoneOverrideController } from './BoneOverrideController';
@@ -62,17 +62,8 @@ const BONE_SUFFIX_MAP: Record<string, keyof BoneRefs> = {
 
 function collectBoneRefs(root: THREE.Object3D): BoneRefs {
   const refs: BoneRefs = {
-    head: null,
-    neck: null,
-    spine: null,
-    spine1: null,
-    spine2: null,
-    hips: null,
-    jaw: null,
-    leftArm: null,
-    leftForeArm: null,
-    rightArm: null,
-    rightForeArm: null,
+    head: null, neck: null, spine: null, spine1: null, spine2: null,
+    hips: null, jaw: null, leftArm: null, leftForeArm: null, rightArm: null, rightForeArm: null,
   };
   root.traverse((child) => {
     const bone = child as Bone;
@@ -88,29 +79,20 @@ function collectBoneRefs(root: THREE.Object3D): BoneRefs {
 
 function assistantStateToClip(state: AssistantState): string {
   switch (state) {
-    case 'idle':
-      return CLIP_NAMES.IDLE;
-    case 'walking':
-      return CLIP_NAMES.WALK;
-    case 'pointing':
-      return CLIP_NAMES.POINT;
-    case 'pointingAt':
-      return CLIP_NAMES.IDLE;
-    case 'waving':
-      return CLIP_NAMES.WAVE;
-    case 'talking':
-      return CLIP_NAMES.TALK;
-    case 'dancing':
-      return CLIP_NAMES.DANCE;
+    case 'idle': return CLIP_NAMES.IDLE;
+    case 'walking': return CLIP_NAMES.WALK;
+    case 'pointing': return CLIP_NAMES.POINT;
+    case 'pointingAt': return CLIP_NAMES.IDLE;
+    case 'waving': return CLIP_NAMES.WAVE;
+    case 'talking': return CLIP_NAMES.TALK;
+    case 'dancing': return CLIP_NAMES.DANCE;
     case 'hidden':
-    default:
-      return CLIP_NAMES.IDLE;
+    default: return CLIP_NAMES.IDLE;
   }
 }
 
 function computeArmRestData(bones: BoneRefs): ArmRestData {
   const defaultQuat = new THREE.Quaternion();
-
   return {
     leftArmRestQuat: bones.leftArm?.quaternion.clone() ?? defaultQuat.clone(),
     rightArmRestQuat: bones.rightArm?.quaternion.clone() ?? defaultQuat.clone(),
@@ -225,10 +207,6 @@ export function CharacterModel({
 
     const bones = collectBoneRefs(baseModel);
 
-    // Start idle and advance one frame so arm bones are in their idle-pose
-    // positions before we snapshot the rest data. Without this, rest data
-    // comes from the GLB bind/T-pose (arms out horizontal), which breaks the
-    // IK rotation math and causes arms to stay raised after pointing ends.
     const idleAction = actions[CLIP_NAMES.IDLE];
     if (idleAction) {
       idleAction.reset();
@@ -239,27 +217,16 @@ export function CharacterModel({
     baseModel.updateMatrixWorld(true);
     const armRest = computeArmRestData(bones);
 
-    return {
-      mixer: mixerInstance,
-      actionsMap: actions,
-      boneRefs: bones,
-      armRestData: armRest,
-    };
+    return { mixer: mixerInstance, actionsMap: actions, boneRefs: bones, armRestData: armRest };
   }, [baseModel, animations]);
 
   const mixerRef = useRef(mixer);
   mixerRef.current = mixer;
-
   const actionsRef = useRef(actionsMap);
   actionsRef.current = actionsMap;
-
-  const currentActionRef = useRef<THREE.AnimationAction | null>(
-    actionsMap[CLIP_NAMES.IDLE] ?? null,
-  );
-
+  const currentActionRef = useRef<THREE.AnimationAction | null>(actionsMap[CLIP_NAMES.IDLE] ?? null);
   const boneRefsRef = useRef(boneRefs);
   boneRefsRef.current = boneRefs;
-
   const armRestDataRef = useRef(armRestData);
   armRestDataRef.current = armRestData;
 
@@ -267,11 +234,8 @@ export function CharacterModel({
     (clipName: string, crossfadeDuration = ANIMATION_CONFIG.CROSSFADE_DURATION) => {
       const next = actionsRef.current[clipName];
       if (!next) return;
-
       const prev = currentActionRef.current;
-      if (prev === next && next.isRunning()) {
-        return;
-      }
+      if (prev === next && next.isRunning()) return;
       next.reset();
       if (prev && prev !== next) {
         next.crossFadeFrom(prev, crossfadeDuration, true);
@@ -284,15 +248,12 @@ export function CharacterModel({
 
   const transitionToClipRef = useRef(transitionToClip);
   transitionToClipRef.current = transitionToClip;
-
   const viewportToWorldRef = useRef(viewportToWorld);
   viewportToWorldRef.current = viewportToWorld;
   const viewportXToWorldXRef = useRef(viewportXToWorldX);
   viewportXToWorldXRef.current = viewportXToWorldX;
-
   const onStateChangeRef = useRef(onStateChange);
   onStateChangeRef.current = onStateChange;
-
   const characterRef = useRef(character);
   characterRef.current = character;
 
@@ -339,7 +300,6 @@ export function CharacterModel({
           walkResolveRef.current?.();
           oneShotResolveRef.current?.();
           oneShotResolveRef.current = null;
-
           const world = viewportToWorldRef.current(viewportX, viewportY, 0);
           walkTargetRef.current = { x: world.x, y: world.y };
           walkResolveRef.current = resolve;
@@ -348,7 +308,6 @@ export function CharacterModel({
           onStateChangeRef.current?.('walking');
         });
       },
-
       walkToScreenHeadAt(viewportX: number, headViewportY: number) {
         return new Promise<void>((resolve) => {
           const modelHeight = characterRef.current.modelHeight;
@@ -360,7 +319,6 @@ export function CharacterModel({
           onStateChangeRef.current?.('walking');
         });
       },
-
       walkToScreenX(viewportX: number) {
         return new Promise<void>((resolve) => {
           const worldX = viewportXToWorldXRef.current(viewportX);
@@ -372,12 +330,10 @@ export function CharacterModel({
           onStateChangeRef.current?.('walking');
         });
       },
-
       snapToViewportX(viewportX: number) {
         const worldX = viewportXToWorldXRef.current(viewportX);
         if (groupRef.current) groupRef.current.position.x = worldX;
       },
-
       playOneShot(state: AssistantState) {
         return new Promise<void>((resolve) => {
           oneShotResolveRef.current = resolve;
@@ -386,21 +342,17 @@ export function CharacterModel({
           onStateChangeRef.current?.(state);
         });
       },
-
       transitionTo(state: AssistantState) {
         stateRef.current = state;
         transitionToClipRef.current(assistantStateToClip(state));
         onStateChangeRef.current?.(state);
       },
-
       setLookTarget(target: LookTarget) {
         lookTargetRef.current = target;
       },
-
       setCharacterWorldX(worldX: number) {
         if (groupRef.current) groupRef.current.position.x = worldX;
       },
-
       getCharacterScreenX() {
         if (!groupRef.current) return 0;
         const v = new THREE.Vector3();
@@ -409,7 +361,6 @@ export function CharacterModel({
         const rect = gl.domElement.getBoundingClientRect();
         return (v.x * 0.5 + 0.5) * rect.width + rect.left;
       },
-
       getHeadScreenPosition() {
         if (!groupRef.current) return null;
         const v = new THREE.Vector3();
@@ -422,13 +373,11 @@ export function CharacterModel({
           y: (-(v.y * 0.5) + 0.5) * rect.height + rect.top,
         };
       },
-
       getClipDuration(state: AssistantState) {
         const clipName = assistantStateToClip(state);
         const action = actionsRef.current[clipName];
         return action ? action.getClip().duration : 0;
       },
-
       cancelCurrentAction() {
         walkTargetRef.current = null;
         walkResolveRef.current?.();
@@ -439,34 +388,23 @@ export function CharacterModel({
         transitionToClipRef.current(CLIP_NAMES.IDLE);
         onStateChangeRef.current?.('idle');
       },
-
       setTargetRotationY(angle: number) {
         targetRotationYRef.current = angle;
       },
-
       setWalkFacing(angle: number) {
         walkFacingRef.current = angle;
       },
-
       setPointAtTarget(viewportX: number, viewportY: number, arm: 'left' | 'right') {
         const worldPos = viewportToWorldRef.current(viewportX, viewportY, 0);
-        pointAtTargetRef.current = {
-          worldX: worldPos.x,
-          worldY: worldPos.y,
-          worldZ: worldPos.z,
-          arm,
-        };
+        pointAtTargetRef.current = { worldX: worldPos.x, worldY: worldPos.y, worldZ: worldPos.z, arm };
       },
-
       clearPointAtTarget() {
         pointAtTargetRef.current = null;
       },
     };
 
     controllerRef.current = controller;
-    return () => {
-      controllerRef.current = null;
-    };
+    return () => { controllerRef.current = null; };
   }, [controllerRef, camera, gl]);
 
   useEffect(() => {
@@ -580,12 +518,8 @@ export function CharacterModel({
         if (!lightConfigured.current) {
           lightConfigured.current = true;
           const cam = light.shadow.camera;
-          cam.left = -3;
-          cam.right = 3;
-          cam.top = 3;
-          cam.bottom = -3;
-          cam.near = 0.5;
-          cam.far = 20;
+          cam.left = -3; cam.right = 3; cam.top = 3; cam.bottom = -3;
+          cam.near = 0.5; cam.far = 20;
           cam.updateProjectionMatrix();
           light.shadow.mapSize.setScalar(1024);
           light.shadow.bias = -0.0005;
@@ -611,8 +545,6 @@ export function CharacterModel({
           scale={character.modelScale}
           onPointerDown={(e: ThreeEvent<PointerEvent>) => {
             e.stopPropagation();
-            // Intercept the upcoming native click event in the capture phase so it
-            // cannot reach DOM elements sitting behind the transparent canvas overlay.
             let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
             const captureClick = (clickEvent: MouseEvent) => {
               if (cleanupTimer !== null) clearTimeout(cleanupTimer);
@@ -620,8 +552,6 @@ export function CharacterModel({
               clickEvent.preventDefault();
               document.removeEventListener('click', captureClick, true);
             };
-            // Safety valve: remove the listener if no click follows within 600 ms
-            // (e.g. the pointer moved enough that the browser suppresses the click).
             cleanupTimer = setTimeout(() => {
               document.removeEventListener('click', captureClick, true);
             }, 600);
@@ -630,8 +560,6 @@ export function CharacterModel({
           }}
           onPointerOver={(e: ThreeEvent<PointerEvent>) => {
             e.stopPropagation();
-            // While the pointer is over the character, suppress hover events so
-            // DOM elements behind the transparent canvas don't receive them.
             if (!suppressHoverRef.current) {
               const suppress = (ev: Event) => { ev.stopImmediatePropagation(); };
               suppressHoverRef.current = suppress;

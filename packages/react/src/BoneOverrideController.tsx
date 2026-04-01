@@ -1,8 +1,9 @@
 import { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { ANIMATION_CONFIG, ROTATION_LIMITS } from './constants';
-import type { ArmRestData, AssistantState, BoneRefs, LookTarget, PointAtTarget } from './types';
+import { ANIMATION_CONFIG, ROTATION_LIMITS } from '@unopsitg/page-assistant-core';
+import type { AssistantState, LookTarget, PointAtTarget } from '@unopsitg/page-assistant-core';
+import type { ArmRestData, BoneRefs } from './types';
 
 interface BoneOverrideControllerProps {
   boneRefs: React.RefObject<BoneRefs>;
@@ -202,10 +203,7 @@ function collectFingerBones(forearmBone: THREE.Bone | null): HandFingerBones | n
   return { index, curl, restRotations };
 }
 
-function applyPointingFingers(
-  fingers: HandFingerBones,
-  blend: number,
-) {
+function applyPointingFingers(fingers: HandFingerBones, blend: number) {
   for (const bone of fingers.curl) {
     bone.rotation.x = THREE.MathUtils.lerp(bone.rotation.x, FINGER_CURL_ANGLE, blend);
   }
@@ -289,20 +287,9 @@ export function BoneOverrideController({
     const lf = ANIMATION_CONFIG.CURSOR_LERP_FACTOR;
 
     applyLookRotation(bones.head, headY, headX, lf);
-    applyLookRotation(
-      bones.neck,
-      headY * ROTATION_LIMITS.NECK_FACTOR,
-      headX * ROTATION_LIMITS.NECK_FACTOR,
-      lf,
-    );
-    applyLookRotation(
-      bones.spine,
-      headY * ROTATION_LIMITS.SPINE_FACTOR,
-      headX * ROTATION_LIMITS.SPINE_FACTOR,
-      lf,
-    );
+    applyLookRotation(bones.neck, headY * ROTATION_LIMITS.NECK_FACTOR, headX * ROTATION_LIMITS.NECK_FACTOR, lf);
+    applyLookRotation(bones.spine, headY * ROTATION_LIMITS.SPINE_FACTOR, headX * ROTATION_LIMITS.SPINE_FACTOR, lf);
 
-    // --- Procedural arm pointing override ---
     const pointAt = pointAtTarget.current;
     const restData = armRestData.current;
     const isPointingAt = state === 'pointingAt';
@@ -329,17 +316,9 @@ export function BoneOverrideController({
 
     if (pointAt && restData) {
       if (pointAt.arm === 'left') {
-        computeArmIK(
-          bones.leftArm, bones.leftForeArm,
-          restData.leftArmRestQuat, restData.leftForearmRestQuat,
-          pointAt, leftAimRef.current, false, bodyRotY, maxArmIkAngle,
-        );
+        computeArmIK(bones.leftArm, bones.leftForeArm, restData.leftArmRestQuat, restData.leftForearmRestQuat, pointAt, leftAimRef.current, false, bodyRotY, maxArmIkAngle);
       } else {
-        computeArmIK(
-          bones.rightArm, bones.rightForeArm,
-          restData.rightArmRestQuat, restData.rightForearmRestQuat,
-          pointAt, rightAimRef.current, true, bodyRotY, maxArmIkAngle,
-        );
+        computeArmIK(bones.rightArm, bones.rightForeArm, restData.rightArmRestQuat, restData.rightForearmRestQuat, pointAt, rightAimRef.current, true, bodyRotY, maxArmIkAngle);
       }
     }
 
@@ -356,9 +335,6 @@ export function BoneOverrideController({
         applyPointingFingers(leftFingersRef.current, leftBlendRef.current);
     } else if (leftWasOverridingRef.current) {
       if (leftFingersRef.current) resetFingerBones(leftFingersRef.current);
-      // Explicitly restore the arm to rest. This is required when the Idle
-      // animation clip has no arm tracks (e.g. after FBX→GLB conversion with
-      // mismatched bone names), otherwise the bone freezes in pointing pose.
       if (restData) {
         if (bones.leftArm) bones.leftArm.quaternion.copy(restData.leftArmRestQuat);
         if (bones.leftForeArm) bones.leftForeArm.quaternion.copy(restData.leftForearmRestQuat);
@@ -386,7 +362,6 @@ export function BoneOverrideController({
     }
     rightWasOverridingRef.current = rightOverriding;
 
-    // --- Jaw oscillation for speech ---
     if (bones.jaw) {
       jawTimeRef.current += delta;
 
