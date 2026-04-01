@@ -93,7 +93,7 @@ function buildDefaultTourJson(name: string): string {
         action: 'walkTo',
         popover: {
           title: 'Pricing',
-          description: 'Check out our simple pricing plans. Pick the one that works for you!',
+          description: 'Every plan is free. Seriously. Zero dollars. We checked.',
         },
         duration: 2500,
       },
@@ -403,46 +403,53 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
             <h2 id="pricing-title" className="section-title">
               Simple pricing
             </h2>
-            <p className="section-lead">Pick a tier. {characterName} walks your visitors through every step.</p>
+            <p className="section-lead">Every plan is free. Yes, even the fancy one.</p>
             <div className="pricing-grid">
               <article className="pricing-card">
-                <h3 className="pricing-name">Starter</h3>
+                <h3 className="pricing-name">Hobbyist</h3>
                 <p className="pricing-price">
                   <span className="price-amount">$0</span>
-                  <span className="price-unit">/mo</span>
+                  <span className="price-unit">/forever</span>
                 </p>
                 <ul className="pricing-list">
-                  <li>Idle and walk</li>
-                  <li>Single site</li>
-                  <li>Community support</li>
+                  <li><a href="https://www.npmjs.com/package/@unopsitg/page-assistant-core" target="_blank" rel="noopener">@unopsitg/page-assistant-core</a></li>
+                  <li>Types, constants &amp; utilities</li>
+                  <li>Support via vibes</li>
                 </ul>
               </article>
               <article className="pricing-card pricing-card-featured">
                 <span className="pricing-badge">Popular</span>
-                <h3 className="pricing-name">Pro</h3>
+                <h3 className="pricing-name">Professional</h3>
                 <p className="pricing-price">
-                  <span className="price-amount">$xx</span>
-                  <span className="price-unit">/mo</span>
+                  <span className="price-amount">$0</span>
+                  <span className="price-unit">/forever</span>
                 </p>
                 <ul className="pricing-list">
-                  <li>All gestures</li>
-                  <li>Custom click handlers</li>
-                  <li>Priority support</li>
+                  <li><a href="https://www.npmjs.com/package/@unopsitg/page-assistant-web-component" target="_blank" rel="noopener">@unopsitg/page-assistant-web-component</a></li>
+                  <li>Works with any framework</li>
+                  <li>Onboarding: you got this, champ</li>
                 </ul>
               </article>
               <article className="pricing-card">
-                <h3 className="pricing-name">Team</h3>
+                <h3 className="pricing-name">Enterprise</h3>
                 <p className="pricing-price">
-                  <span className="price-amount">$xxx</span>
-                  <span className="price-unit">/mo</span>
+                  <span className="price-amount">$0</span>
+                  <span className="price-unit">/forever</span>
                 </p>
                 <ul className="pricing-list">
-                  <li>Multiple projects</li>
-                  <li>Shared presets</li>
-                  <li>SLA and onboarding</li>
+                  <li><a href="https://www.npmjs.com/package/@unopsitg/page-assistant-react" target="_blank" rel="noopener">@unopsitg/page-assistant-react</a></li>
+                  <li>Custom characters &amp; models</li>
+                  <li>SLA: {characterName} believes in you</li>
                 </ul>
               </article>
             </div>
+            <p className="pricing-cta">
+              Everything you see on this page is powered by open-source npm packages. Install them and add {characterName} to your own site today:
+              {' '}<a href="https://www.npmjs.com/package/@unopsitg/page-assistant-react" target="_blank" rel="noopener">React</a>
+              {' · '}<a href="https://www.npmjs.com/package/@unopsitg/page-assistant-web-component" target="_blank" rel="noopener">Web Component</a>
+              {' · '}<a href="https://www.npmjs.com/package/@unopsitg/page-assistant-core" target="_blank" rel="noopener">Core</a>
+              {' · '}<a href="https://github.com/tushardighe-builder/page-assistant" target="_blank" rel="noopener">GitHub</a>
+            </p>
           </div>
         </section>
 
@@ -451,7 +458,7 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
 
       <footer className="site-footer">
         <div className="container footer-inner">
-          <p>{characterName} · Page Assistant demo</p>
+          <p>Built by <a href="mailto:tushard@unops.org">Tushar Dighe</a> · <a href="https://github.com/tushardighe-builder/page-assistant" target="_blank" rel="noopener">GitHub</a></p>
         </div>
       </footer>
 
@@ -493,6 +500,22 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                   <option key={ch.id} value={ch.id}>{ch.label}</option>
                 ))}
               </select>
+              <button
+                type="button"
+                className="download-glb-btn"
+                onClick={() => {
+                  const a = document.createElement('a');
+                  a.href = activeCharacter.modelPath;
+                  a.download = `${characterId}.glb`;
+                  a.click();
+                }}
+                aria-label={`Download ${characterName} GLB model`}
+                title={`Download ${characterName} .glb`}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M8 1v9m0 0L5 7m3 3 3-3M2 12v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
             </div>
             <div className="control-tabs">
               <button type="button" className={`control-tab${controlTab === 'actions' ? ' control-tab-active' : ''}`}

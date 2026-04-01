@@ -566,16 +566,12 @@ Outputs the demo site to `dist/` at the repo root.
 
 ### 2. Update versions
 
-Bump the version in each package's `package.json` before publishing. All three packages should use the same version:
+All three packages are versioned in lockstep. Use the helper script to bump them all at once (it also updates inter-package dependency versions):
 
 ```bash
-# Manually edit, or use npm version:
-npm -w @unopsitg/page-assistant-core version 0.2.0
-npm -w @unopsitg/page-assistant-react version 0.2.0
-npm -w @unopsitg/page-assistant-web-component version 0.2.0
+npm run version:set -- 0.2.0
+npm install   # sync the lockfile
 ```
-
-Also update the dependency ranges in `@unopsitg/page-assistant-react` and `@unopsitg/page-assistant-web-component` to match the new `@unopsitg/page-assistant-core` version if the major/minor changed.
 
 ### 3. Build
 
@@ -790,4 +786,4 @@ firebase deploy --only hosting:pagecompanion
 
 ## License
 
-Private — not currently published under an open-source license.
+MIT

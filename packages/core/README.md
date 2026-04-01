@@ -1,7 +1,7 @@
 # @unopsitg/page-assistant-core
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/tushardighe-unops/page-assistant/main/public/pagecompanion_small.png" alt="Page Assistant" width="600" />
+  <img src="https://raw.githubusercontent.com/tushardighe-builder/page-assistant/main/public/pagecompanion_small.png" alt="Page Assistant" width="600" />
 </p>
 
 Framework-agnostic types, constants, and utilities for the Page Assistant ecosystem.

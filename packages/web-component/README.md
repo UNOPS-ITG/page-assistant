@@ -1,7 +1,7 @@
 # @unopsitg/page-assistant-web-component
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/tushardighe-unops/page-assistant/main/public/pagecompanion_small.png" alt="Page Assistant" width="600" />
+  <img src="https://raw.githubusercontent.com/tushardighe-builder/page-assistant/main/public/pagecompanion_small.png" alt="Page Assistant" width="600" />
 </p>
 
 A framework-agnostic custom element (`<page-assistant>`) that renders an interactive 3D character assistant on any web page. Works with vanilla JS, Vue, Svelte, Angular, or any framework that supports standard HTML elements.

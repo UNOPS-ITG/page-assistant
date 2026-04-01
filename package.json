@@ -11,6 +11,7 @@
     "build:react": "npm -w @unopsitg/page-assistant-react run build",
     "build:wc": "npm -w @unopsitg/page-assistant-web-component run build",
     "build:packages": "npm run build:core && npm run build:react && npm run build:wc",
+    "version:set": "node scripts/set-version.mjs",
     "preview": "vite preview",
     "convert-model": "tsx scripts/convert-mixamo.ts"
   },

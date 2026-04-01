@@ -1,6 +1,14 @@
 {
   "name": "@unopsitg/page-assistant-core",
-  "version": "0.1.0",
+  "version": "0.2.1",
+  "description": "Shared types, constants, and utilities for the Page Assistant ecosystem",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tushardighe-builder/page-assistant.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/tushardighe-builder/page-assistant#readme",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -15,5 +23,8 @@
     "build": "vite build && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit"
   },
-  "files": ["dist", "README.md"]
+  "files": [
+    "dist",
+    "README.md"
+  ]
 }

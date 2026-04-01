@@ -1,6 +1,14 @@
 {
   "name": "@unopsitg/page-assistant-web-component",
-  "version": "0.1.0",
+  "version": "0.2.1",
+  "description": "Framework-agnostic <page-assistant> custom element — interactive 3D character for any web app",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tushardighe-builder/page-assistant.git",
+    "directory": "packages/web-component"
+  },
+  "homepage": "https://github.com/tushardighe-builder/page-assistant#readme",
   "type": "module",
   "main": "dist/page-assistant.js",
   "module": "dist/page-assistant.js",
@@ -16,8 +24,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@unopsitg/page-assistant-core": "^0.1.0",
-    "@unopsitg/page-assistant-react": "^0.1.0"
+    "@unopsitg/page-assistant-core": "0.2.1",
+    "@unopsitg/page-assistant-react": "0.2.1"
   },
-  "files": ["dist", "README.md"]
+  "files": [
+    "dist",
+    "README.md"
+  ]
 }
