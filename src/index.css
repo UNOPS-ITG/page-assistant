@@ -31,7 +31,7 @@ html {
   --accent-gradient: linear-gradient(135deg, #6366f1, #7c3aed);
   --accent-shadow: rgba(99, 102, 241, 0.35);
   --header-bg: rgba(10, 10, 15, 0.72);
-  --panel-bg: rgba(10, 10, 15, 0.65);
+  --panel-bg: rgb(10, 10, 15);
   --shadow: rgba(0, 0, 0, 0.35);
   --shadow-heavy: rgba(0, 0, 0, 0.4);
   --pricing-featured-bg: linear-gradient(160deg, rgba(99, 102, 241, 0.12), rgba(26, 26, 46, 0.5));
@@ -59,7 +59,7 @@ html {
   --accent-gradient: linear-gradient(135deg, #6366f1, #7c3aed);
   --accent-shadow: rgba(99, 102, 241, 0.2);
   --header-bg: rgba(255, 255, 255, 0.85);
-  --panel-bg: rgba(255, 255, 255, 0.8);
+  --panel-bg: rgb(255, 255, 255);
   --shadow: rgba(0, 0, 0, 0.08);
   --shadow-heavy: rgba(0, 0, 0, 0.12);
   --pricing-featured-bg: linear-gradient(160deg, rgba(99, 102, 241, 0.08), rgba(241, 245, 249, 0.8));
@@ -87,7 +87,7 @@ html {
   --accent-gradient: linear-gradient(135deg, #6b7280, #4b5563);
   --accent-shadow: rgba(107, 114, 128, 0.3);
   --header-bg: rgba(26, 26, 26, 0.85);
-  --panel-bg: rgba(26, 26, 26, 0.75);
+  --panel-bg: rgb(26, 26, 26);
   --shadow: rgba(0, 0, 0, 0.3);
   --shadow-heavy: rgba(0, 0, 0, 0.4);
   --pricing-featured-bg: linear-gradient(160deg, rgba(107, 114, 128, 0.15), rgba(42, 42, 42, 0.6));

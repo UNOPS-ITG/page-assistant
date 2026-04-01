@@ -5,6 +5,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import * as THREE from 'three';
 import type { AnimationClip, Bone, Group } from 'three';
+const HOVER_EVENT_TYPES = ['mouseover', 'mouseenter', 'pointerover', 'pointerenter'] as const;
+
 import {
   ANIMATION_CONFIG,
   BONE_NAMES,
@@ -142,6 +144,8 @@ export function CharacterModel({
   const { camera, gl } = useThree();
   const { viewportToWorld, viewportXToWorldX } = useScreenToWorld();
   const cursorRef = useCursorTracking();
+
+  const suppressHoverRef = useRef<((ev: Event) => void) | null>(null);
 
   const lookTargetRef = useRef<LookTarget>({ mode: 'forward' });
   const isSpeakingRef = useRef(isSpeaking);
@@ -471,6 +475,17 @@ export function CharacterModel({
     onLoadedRef.current?.();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (suppressHoverRef.current) {
+        for (const type of HOVER_EVENT_TYPES) {
+          document.removeEventListener(type, suppressHoverRef.current, true);
+        }
+        suppressHoverRef.current = null;
+      }
+    };
+  }, []);
+
   const getMaxFeetWorldY = useCallback((): number => {
     const modelH = Math.max(characterRef.current.modelHeight, actualModelHeightRef.current);
     const headWorld = viewportToWorldRef.current(0, 0, 0);
@@ -596,10 +611,46 @@ export function CharacterModel({
           scale={character.modelScale}
           onPointerDown={(e: ThreeEvent<PointerEvent>) => {
             e.stopPropagation();
+            // Intercept the upcoming native click event in the capture phase so it
+            // cannot reach DOM elements sitting behind the transparent canvas overlay.
+            let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
+            const captureClick = (clickEvent: MouseEvent) => {
+              if (cleanupTimer !== null) clearTimeout(cleanupTimer);
+              clickEvent.stopImmediatePropagation();
+              clickEvent.preventDefault();
+              document.removeEventListener('click', captureClick, true);
+            };
+            // Safety valve: remove the listener if no click follows within 600 ms
+            // (e.g. the pointer moved enough that the browser suppresses the click).
+            cleanupTimer = setTimeout(() => {
+              document.removeEventListener('click', captureClick, true);
+            }, 600);
+            document.addEventListener('click', captureClick, true);
             onClick?.();
           }}
-          onPointerOver={onPointerOver}
-          onPointerOut={onPointerOut}
+          onPointerOver={(e: ThreeEvent<PointerEvent>) => {
+            e.stopPropagation();
+            // While the pointer is over the character, suppress hover events so
+            // DOM elements behind the transparent canvas don't receive them.
+            if (!suppressHoverRef.current) {
+              const suppress = (ev: Event) => { ev.stopImmediatePropagation(); };
+              suppressHoverRef.current = suppress;
+              for (const type of HOVER_EVENT_TYPES) {
+                document.addEventListener(type, suppress, true);
+              }
+            }
+            onPointerOver?.();
+          }}
+          onPointerOut={(e: ThreeEvent<PointerEvent>) => {
+            e.stopPropagation();
+            if (suppressHoverRef.current) {
+              for (const type of HOVER_EVENT_TYPES) {
+                document.removeEventListener(type, suppressHoverRef.current, true);
+              }
+              suppressHoverRef.current = null;
+            }
+            onPointerOut?.();
+          }}
         />
         {(character.lightingOverrides?.fillLightIntensity ?? 0) > 0 && (
           <pointLight

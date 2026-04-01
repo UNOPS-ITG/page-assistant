@@ -103,7 +103,7 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelHeight: 1.47,
     modelScale: 1,
     lightingOverrides: {
-      fillLightIntensity: 0.4,
+      fillLightIntensity: 0.0,
       directionalIntensity: 2.2,
       emissiveIntensity: 0,
     },
@@ -117,7 +117,7 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelScale: 1,
     maxArmIkAngle: Math.PI * 0.45,
     lightingOverrides: {
-      fillLightIntensity: 0.4,
+      fillLightIntensity: 0.0,
       directionalIntensity: 3.2,
       emissiveIntensity: 0,
     },
@@ -130,7 +130,7 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelHeight: 1.47,
     modelScale: 1,
     lightingOverrides: {
-      fillLightIntensity: 0.4,
+      fillLightIntensity: 0.0,
       directionalIntensity: 5.2,
       emissiveIntensity: 0,
     },
@@ -143,7 +143,7 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelHeight: 1.47,
     modelScale: 1,
     lightingOverrides: {
-      fillLightIntensity: 0.4,
+      fillLightIntensity: 0.0,
       directionalIntensity: 3.2,
       emissiveIntensity: 0,
     },
@@ -157,7 +157,7 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelScale: 1,
     maxArmIkAngle: Math.PI * 0.45,
     lightingOverrides: {
-      fillLightIntensity: 0.4,
+      fillLightIntensity: 0.0,
       directionalIntensity: 1.2,
       emissiveIntensity: 0,
     },
@@ -171,7 +171,7 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelScale: 1,
     maxArmIkAngle: Math.PI * 0.55,
     lightingOverrides: {
-      fillLightIntensity: 0.4,
+      fillLightIntensity: 0.0,
       directionalIntensity: 1.2,
       emissiveIntensity: 0,
     },
@@ -184,7 +184,7 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelHeight: 1.47,
     modelScale: 1,
     lightingOverrides: {
-      fillLightIntensity: 0.4,
+      fillLightIntensity: 0.0,
       directionalIntensity: 1.2,
       emissiveIntensity: 0,
     },
@@ -198,7 +198,7 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelScale: 1,
     maxArmIkAngle: Math.PI * 0.50,
     lightingOverrides: {
-      fillLightIntensity: 0.4,
+      fillLightIntensity: 0.0,
       directionalIntensity: 1.2,
       emissiveIntensity: 0,
     },
@@ -211,7 +211,7 @@ export const CHARACTERS: Record<string, CharacterDefinition> = {
     modelHeight: 1.47,
     modelScale: 1,
     lightingOverrides: {
-      fillLightIntensity: 0.4,
+      fillLightIntensity: 0.0,
       directionalIntensity: 1.2,
       emissiveIntensity: 0,
     },
