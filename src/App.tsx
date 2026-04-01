@@ -422,7 +422,7 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
                 <span className="pricing-badge">Popular</span>
                 <h3 className="pricing-name">Pro</h3>
                 <p className="pricing-price">
-                  <span className="price-amount">$29</span>
+                  <span className="price-amount">$xx</span>
                   <span className="price-unit">/mo</span>
                 </p>
                 <ul className="pricing-list">
@@ -434,7 +434,7 @@ function DemoContent({ characterId, onCharacterChange, theme, onThemeChange }: D
               <article className="pricing-card">
                 <h3 className="pricing-name">Team</h3>
                 <p className="pricing-price">
-                  <span className="price-amount">$99</span>
+                  <span className="price-amount">$xxx</span>
                   <span className="price-unit">/mo</span>
                 </p>
                 <ul className="pricing-list">
